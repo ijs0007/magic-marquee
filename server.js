@@ -31,7 +31,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { Transform } from "node:stream";
+import { Transform, Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.12";
+const APP_VERSION = "0.13";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -117,6 +117,8 @@ let refreshToken = process.env.YT_REFRESH_TOKEN || null;
 const jobs = new Map();
 // In-memory transcription jobs (same deal — master is in R2, so re-run is cheap).
 const transcribeJobs = new Map();
+// In-memory thumbnail frame-extraction jobs (master in R2, so re-run is cheap).
+const thumbJobs = new Map();
 
 function oauthClient() {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
@@ -571,8 +573,77 @@ async function runTranscription(jobId, key) {
   }
 }
 
+// Scrape the video's duration (seconds) from ffmpeg's "Duration:" banner. Returns
+// 0 if it can't be read (callers fall back to fixed early offsets).
+function ffmpegProbeDuration(file) {
+  return new Promise((resolve) => {
+    if (!ffmpegStatic) return resolve(0);
+    const proc = spawn(ffmpegStatic, ["-hide_banner", "-i", file]);
+    let err = "";
+    proc.stderr.on("data", (d) => { err += d.toString(); if (err.length > 20000) err = err.slice(-20000); });
+    proc.on("error", () => resolve(0));
+    proc.on("close", () => {
+      const i = err.indexOf("Duration:");
+      if (i === -1) return resolve(0);
+      const t = err.slice(i + 9, i + 30).split(",")[0].trim(); // "HH:MM:SS.ms"
+      const p = t.split(":");
+      if (p.length < 3) return resolve(0);
+      const h = parseFloat(p[0]) || 0, m = parseFloat(p[1]) || 0, s = parseFloat(p[2]) || 0;
+      resolve(h * 3600 + m * 60 + s);
+    });
+  });
+}
+
+// Background: pull the master from R2, then grab evenly-spaced candidate frames
+// (each cropped to fill 1280x720) as base64 JPEGs for the thumbnail picker. One bad
+// timestamp is skipped rather than failing the whole job.
+async function runFrameExtraction(jobId, key) {
+  const job = thumbJobs.get(jobId);
+  const tmpVideo = path.join(os.tmpdir(), `yt-thumbvid-${jobId}`);
+  const framePaths = [];
+  const frames = [];
+  try {
+    job.state = "fetching";
+    const obj = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    await pipeline(obj.Body, fs.createWriteStream(tmpVideo));
+
+    job.state = "extracting";
+    const dur = await ffmpegProbeDuration(tmpVideo);
+    const pcts = [0.10, 0.25, 0.40, 0.55, 0.70, 0.85];
+    let idx = 0;
+    for (const p of pcts) {
+      const t = dur > 0 ? dur * p : (idx * 1.5 + 0.5); // fallback: early offsets
+      const out = path.join(os.tmpdir(), `yt-thumbf-${jobId}-${idx}.jpg`);
+      framePaths.push(out);
+      idx++;
+      try {
+        await runFfmpeg([
+          "-hide_banner", "-loglevel", "error", "-y",
+          "-ss", t.toFixed(2),
+          "-i", tmpVideo,
+          "-frames:v", "1",
+          "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720",
+          "-q:v", "3",
+          out,
+        ]);
+        const buf = await fs.promises.readFile(out);
+        if (buf.length) frames.push("data:image/jpeg;base64," + buf.toString("base64"));
+      } catch { /* skip this timestamp */ }
+    }
+    if (frames.length === 0) throw new Error("Couldn't extract any frames from this video.");
+    job.state = "done";
+    job.frames = frames;
+  } catch (err) {
+    job.state = "error";
+    job.error = err?.message || String(err);
+  } finally {
+    fs.promises.unlink(tmpVideo).catch(() => {});
+    for (const fp of framePaths) fs.promises.unlink(fp).catch(() => {});
+  }
+}
+
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "12mb" })); // base64 thumbnail images can be a few MB
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
@@ -890,7 +961,7 @@ app.post("/api/metadata", async (req, res) => {
     }
     // Fill the saved template's slots and compose the final title + description.
     const composed = composeMetadata({ aiTitle, synopsis, chapters });
-    res.json({ title: composed.title, description: composed.description });
+    res.json({ title: composed.title, description: composed.description, rawTitle: aiTitle, synopsis });
   } catch (err) {
     res.status(500).json({ error: err?.message || String(err) });
   }
@@ -944,6 +1015,97 @@ app.post("/api/template", async (req, res) => {
     res.json({ ok: true, fields: used });
   } catch (err) {
     res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// --- Thumbnail maker --------------------------------------------------------
+
+// TH-1: kick off background frame extraction from the R2 master.
+app.post("/api/thumb/frames", (req, res) => {
+  if (!r2Configured) return res.status(500).json({ error: "R2 not configured." });
+  if (!ffmpegStatic) return res.status(500).json({ error: "ffmpeg not available." });
+  const { key } = req.body || {};
+  if (!key) return res.status(400).json({ error: "Missing key." });
+  const jobId = crypto.randomUUID();
+  thumbJobs.set(jobId, { state: "fetching", createdAt: Date.now() });
+  runFrameExtraction(jobId, key);
+  res.json({ jobId });
+});
+
+// TH-2: poll frame-extraction progress + the candidate frames.
+app.get("/api/thumb/frames/:jobId", (req, res) => {
+  const job = thumbJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: "Unknown job." });
+  res.json(job);
+});
+
+// TH-3: AI writes a short, punchy thumbnail overlay from the title + synopsis,
+// grouped into lines of words with per-word highlight flags.
+app.post("/api/thumb/text", async (req, res) => {
+  if (!aiConfigured) return res.status(500).json({ error: "AI not configured (set ANTHROPIC_API_KEY)." });
+  const { title, synopsis } = req.body || {};
+  const t = String(title || "").slice(0, 300).trim();
+  const s = String(synopsis || "").slice(0, 4000).trim();
+  if (!t && !s) return res.status(400).json({ error: "Need a title or synopsis to work from." });
+
+  const system = [
+    "You write the SHORT punchy text overlay that goes on a YouTube thumbnail for a fictional narrative short film (channel: Isaiah Jeremiah).",
+    "Given the film's title and synopsis, write a thumbnail hook: 3 to 8 words total, broken into 2-3 short lines, ALL CAPS or strong Title Case, dramatic and curiosity-driven. It is NOT the full title — it is a bold, scannable hook (e.g. \"HE LOST HER / & BECAME / SUICIDAL\").",
+    "Choose 1-3 of the most emotionally charged words to highlight in the accent color.",
+    'Respond with ONE JSON object: {"lines":[[{"t":"WORD","b":true},{"t":"WORD","b":false}], ...]} where each inner array is one line of words top-to-bottom, t is the word text, and b is true if that word should be highlighted. No other keys, no markdown fences, no commentary.',
+  ].join("\n");
+  const userContent = "Title: " + (t || "(none)") + "\nSynopsis: " + (s || "(none)");
+
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: METADATA_MODEL, max_tokens: 400, system, messages: [{ role: "user", content: userContent }] }),
+    });
+    if (!r.ok) {
+      const errText = await r.text();
+      return res.status(502).json({ error: `AI request failed (HTTP ${r.status}): ${errText.slice(0, 200)}` });
+    }
+    const data = await r.json();
+    let raw = (data.content || []).filter((b) => b && b.type === "text").map((b) => b.text).join("").trim();
+    const open = raw.indexOf("{"), close = raw.lastIndexOf("}");
+    if (open !== -1 && close > open) raw = raw.slice(open, close + 1);
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { return res.status(502).json({ error: "AI returned unparseable overlay." }); }
+    // Normalize into clean lines of {t,b}.
+    const lines = Array.isArray(parsed.lines) ? parsed.lines : [];
+    const clean = lines
+      .map((line) => (Array.isArray(line) ? line
+        .map((w) => ({ t: String(w && w.t != null ? w.t : "").slice(0, 40), b: Boolean(w && w.b) }))
+        .filter((w) => w.t.trim()) : []))
+      .filter((line) => line.length);
+    if (clean.length === 0) return res.status(502).json({ error: "AI returned an empty overlay." });
+    res.json({ lines: clean });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// TH-4: stamp the composed thumbnail (base64 image) onto the YouTube video.
+app.post("/api/thumb/set", async (req, res) => {
+  if (!refreshToken) return res.status(401).json({ error: "Not authorized yet." });
+  const { videoId, imageBase64 } = req.body || {};
+  if (!videoId || !imageBase64) return res.status(400).json({ error: "Missing videoId or image." });
+  try {
+    const b64 = imageBase64.indexOf(",") !== -1 ? imageBase64.slice(imageBase64.indexOf(",") + 1) : imageBase64;
+    const buf = Buffer.from(b64, "base64");
+    if (buf.length > 2 * 1024 * 1024) {
+      return res.status(400).json({ error: "Thumbnail is over YouTube's 2MB limit — try again (the app exports JPEG to stay small)." });
+    }
+    const auth = oauthClient();
+    auth.setCredentials({ refresh_token: refreshToken });
+    const youtube = google.youtube({ version: "v3", auth });
+    await youtube.thumbnails.set({ videoId, media: { mimeType: "image/jpeg", body: Readable.from(buf) } });
+    res.json({ ok: true });
+  } catch (err) {
+    const reason = err?.errors?.[0]?.reason;
+    const msg = err?.response?.data?.error?.message || err?.message || String(err);
+    res.status(500).json({ error: reason ? `${reason}: ${msg}` : msg });
   }
 });
 
