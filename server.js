@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.19";
+const APP_VERSION = "0.20";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -938,14 +938,14 @@ app.post("/api/metadata", async (req, res) => {
     "You write YouTube metadata for an independent filmmaker's FICTIONAL narrative short films (channel: Isaiah Jeremiah).",
     "You receive a transcript of one short film (it may include timestamps if exported as SRT/VTT, or be plain text with none) and possibly a one-line logline.",
     "",
-    'Respond with a SINGLE JSON object with exactly three string fields: "title", "synopsis", and "chapters". No other keys.',
+    'Provide the metadata by calling the emit_metadata tool with its three fields: "title", "synopsis", and "chapters".',
     "",
     "Rules:",
     "- title: a CATCHY, attention-grabbing title in the style of viral YouTube short films — a punchy, present-tense hook that captures the central conflict, the surprising turn, or the emotional stakes and makes someone want to click. Under 90 characters, Title Case, no emoji. It must stay TRUE to the film: create intrigue, never deceive, and never reveal the ending. Match the dramatic, curiosity-driven style of this channel's real titles, e.g. \"Boss Lady Shocks Co-worker With Unexpected Act of Kindness\", \"Woman Vows To Never Forgive Her Sister Again\", \"Man Blames Himself For Wife's Death, Contemplates Suicide\". Do NOT add the channel name or any '| ...' suffix — that is added separately.",
     "- synopsis: 1-3 short paragraphs describing the film in an engaging, spoiler-light way (set premise and tone; do not reveal the ending). Plain paragraphs only — no chapter timestamps, no section headers, no calls to subscribe.",
     '- chapters: ONLY if the transcript includes timestamps, a newline-separated list of chapter markers, one per line, in the format "M:SS Label" (use "H:MM:SS Label" for films over an hour). The FIRST line MUST start at "0:00". Provide at least 3 chapters, each at least 10 seconds after the previous one, anchored to real shifts in the transcript (scene/beat changes). If the transcript has NO timestamps, return an empty string "" — do not invent chapters.',
     "- If the transcript is empty or nearly silent (little/no dialogue), base the synopsis on the logline. If there is ALSO no logline, infer a short, plausible title and synopsis from the filename; if even that gives nothing, use a simple generic title and a one-line placeholder synopsis. Keep it modest — don't invent specific plot or dialogue the inputs don't support — but ALWAYS fill the fields.",
-    "- CRITICAL: Respond with ONLY the JSON object and nothing else — no markdown fences, no commentary, no apologies, no questions. Even when inputs are thin, you must still return valid JSON with all three fields. Never reply in prose.",
+    "- CRITICAL: Always call the emit_metadata tool, and always fill all three fields. Even when inputs are thin, provide a best-effort title and synopsis (inferred from the filename, or a simple placeholder) rather than refusing. chapters may be an empty string when there are no timestamps.",
   ].join("\n");
 
   const userContent = [
@@ -968,12 +968,24 @@ app.post("/api/metadata", async (req, res) => {
         model: METADATA_MODEL,
         max_tokens: 4000,
         system,
-        // Prefill the reply with "{" so the model is forced to continue as JSON
-        // (it cannot wander into prose). We prepend the "{" back below.
-        messages: [
-          { role: "user", content: userContent },
-          { role: "assistant", content: "{" },
-        ],
+        // Force the model to return its answer through this tool. The API then
+        // hands the fields back already structured (no JSON string to parse),
+        // and the model cannot wander into prose. Works on all current models.
+        tools: [{
+          name: "emit_metadata",
+          description: "Return the finished YouTube metadata for this one film.",
+          input_schema: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Catchy title, under 90 chars, Title Case, no emoji, no channel suffix." },
+              synopsis: { type: "string", description: "1-3 short, spoiler-light paragraphs." },
+              chapters: { type: "string", description: "Newline-separated 'M:SS Label' lines if the transcript has timestamps; otherwise an empty string." },
+            },
+            required: ["title", "synopsis", "chapters"],
+          },
+        }],
+        tool_choice: { type: "tool", name: "emit_metadata" },
+        messages: [{ role: "user", content: userContent }],
       }),
     });
 
@@ -983,35 +995,25 @@ app.post("/api/metadata", async (req, res) => {
     }
 
     const data = await r.json();
-    // We prefilled the assistant turn with "{", so the model returns the
-    // continuation — prepend the "{" back to reconstruct the full JSON.
-    const raw = ("{" + (data.content || [])
-      .filter((b) => b && b.type === "text")
-      .map((b) => b.text)
-      .join("")).trim();
-
-    // Robust extraction: pull the outermost {...} so stray fences/preamble
-    // can't break JSON.parse. String slicing only — clipboard-safe, no regex.
-    let jsonSlice = raw;
-    const open = jsonSlice.indexOf("{");
-    const close = jsonSlice.lastIndexOf("}");
-    if (open !== -1 && close !== -1 && close > open) {
-      jsonSlice = jsonSlice.slice(open, close + 1);
-    }
-
+    // tool_choice forces a tool call, so the answer arrives already structured
+    // in a tool_use block — no JSON string to parse in the normal path.
+    const toolBlock = (data.content || []).find((b) => b && b.type === "tool_use" && b.input);
     let parsed;
-    try {
-      parsed = JSON.parse(jsonSlice);
-    } catch {
-      // Parse failed (often a cut-off reply) — rescue the fields directly.
-      parsed = {
-        title: salvageField(raw, "title"),
-        synopsis: salvageField(raw, "synopsis"),
-        chapters: salvageField(raw, "chapters"),
-      };
-      if (!parsed.title && !parsed.synopsis) {
-        const note = (data.stop_reason === "max_tokens") ? " (the reply was cut off — please try again)" : "";
-        return res.status(502).json({ error: "AI returned unparseable output" + note + ".", raw: raw.slice(0, 500) });
+    if (toolBlock) {
+      parsed = toolBlock.input;
+    } else {
+      // Fallback (shouldn't happen with forced tool_choice): rescue from any text.
+      const raw = (data.content || []).filter((b) => b && b.type === "text").map((b) => b.text).join("").trim();
+      let jsonSlice = raw;
+      const open = jsonSlice.indexOf("{"), close = jsonSlice.lastIndexOf("}");
+      if (open !== -1 && close !== -1 && close > open) jsonSlice = jsonSlice.slice(open, close + 1);
+      try {
+        parsed = JSON.parse(jsonSlice);
+      } catch {
+        parsed = { title: salvageField(raw, "title"), synopsis: salvageField(raw, "synopsis"), chapters: salvageField(raw, "chapters") };
+      }
+      if (!parsed || (!parsed.title && !parsed.synopsis)) {
+        return res.status(502).json({ error: "AI returned unparseable output.", raw: raw.slice(0, 500) });
       }
     }
 
