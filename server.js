@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.11";
+const APP_VERSION = "0.12";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -618,15 +618,15 @@ app.get("/oauth2callback", async (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Authorized</title>
 <style>
-  :root { --accent:#2f80ff; }
-  body { font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#1d1d1f; background:#f5f5f7; margin:0; padding:32px 20px; }
-  .card { max-width:640px; margin:0 auto; background:#fff; border-radius:18px; padding:28px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  :root { --accent:#7c4dff; color-scheme:dark; }
+  body { font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#f0f0f3; background:#0d0d10; margin:0; padding:32px 20px; }
+  .card { max-width:640px; margin:0 auto; background:#16161b; border:1px solid #23232b; border-radius:18px; padding:28px; box-shadow:0 1px 3px rgba(0,0,0,.4); }
   h1 { font-size:22px; margin:0 0 6px; }
-  p { color:#444; }
-  code { display:block; word-break:break-all; background:#f0f0f3; border-radius:10px; padding:14px; margin:14px 0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  p { color:#b6b6bf; }
+  code { display:block; word-break:break-all; background:#101014; border:1px solid #2c2c34; border-radius:10px; padding:14px; margin:14px 0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
   a.btn { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:11px 18px; border-radius:11px; font-weight:600; }
-  button { font:inherit; border:0; background:#e8e8ed; border-radius:9px; padding:8px 14px; cursor:pointer; }
-  .muted { font-size:13px; color:#86868b; }
+  button { font:inherit; border:0; background:#26262e; color:#f0f0f3; border-radius:9px; padding:8px 14px; cursor:pointer; }
+  .muted { font-size:13px; color:#9a9aa4; }
 </style></head>
 <body><div class="card">
   <h1>✅ Authorized</h1>

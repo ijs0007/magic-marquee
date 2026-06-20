@@ -3,59 +3,61 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d0d10">
   <title>YouTube Uploader</title>
   <style>
-    :root { --accent:#2f80ff; --ink:#1d1d1f; --muted:#86868b; --line:#e6e6eb; }
+    :root { --accent:#7c4dff; --ink:#f0f0f3; --muted:#9a9aa4; --line:#2c2c34; color-scheme:dark; }
     * { box-sizing:border-box; }
     body {
       font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-      color:var(--ink); background:#f5f5f7; margin:0; padding:32px 18px;
+      color:var(--ink); background:#0d0d10; margin:0; padding:32px 18px;
       -webkit-font-smoothing:antialiased;
     }
     .wrap { max-width:560px; margin:0 auto; }
     h1 { font-size:26px; font-weight:700; letter-spacing:-.02em; margin:0 0 4px; }
     .sub { color:var(--muted); margin:0 0 24px; font-size:15px; }
     .card {
-      background:#fff; border-radius:18px; padding:22px; margin-bottom:16px;
-      box-shadow:0 1px 3px rgba(0,0,0,.07);
+      background:#16161b; border:1px solid #23232b; border-radius:18px; padding:22px; margin-bottom:16px;
+      box-shadow:0 1px 3px rgba(0,0,0,.4);
     }
     .status { display:flex; align-items:center; gap:9px; font-size:14px; }
-    .dot { width:9px; height:9px; border-radius:50%; background:#c7c7cc; flex:none; }
-    .dot.ok { background:#34c759; }
-    .dot.warn { background:#ff9500; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#3a3a42; flex:none; }
+    .dot.ok { background:#32d74b; }
+    .dot.warn { background:#ff9f0a; }
     label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin:0 0 6px; }
     input[type=text], input[type=file] {
-      width:100%; font:inherit; padding:11px 12px; border:1px solid var(--line);
-      border-radius:11px; background:#fafafc; margin-bottom:16px;
+      width:100%; font:inherit; color:var(--ink); padding:11px 12px; border:1px solid var(--line);
+      border-radius:11px; background:#101014; margin-bottom:16px;
     }
     input[type=file] { padding:9px 12px; }
+    input::placeholder, textarea::placeholder { color:#6a6a73; }
     button {
       display:inline-block; font:inherit; font-weight:600; border:0; cursor:pointer;
       background:var(--accent); color:#fff; padding:12px 18px; border-radius:12px;
       width:100%; transition:opacity .15s;
     }
     button:disabled { opacity:.5; cursor:default; }
-    button.secondary { background:#eef1f6; color:var(--accent); }
+    button.secondary { background:#26262e; color:var(--accent); }
     textarea {
-      width:100%; font:inherit; padding:11px 12px; border:1px solid var(--line);
-      border-radius:11px; background:#fafafc; margin-bottom:16px;
+      width:100%; font:inherit; color:var(--ink); padding:11px 12px; border:1px solid var(--line);
+      border-radius:11px; background:#101014; margin-bottom:16px;
       min-height:130px; resize:vertical; line-height:1.5;
     }
     .genstatus { font-size:13px; margin:10px 0 16px; }
     .checkrow { display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--ink); font-weight:400; line-height:1.45; margin:0 0 16px; cursor:pointer; }
-    .checkrow input { width:auto; margin:2px 0 0; flex:none; cursor:pointer; }
+    .checkrow input { width:auto; margin:2px 0 0; flex:none; cursor:pointer; accent-color:var(--accent); }
     .checkrow b { font-weight:600; }
     a.btn { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:11px 18px; border-radius:11px; font-weight:600; }
     .hint { font-size:13px; color:var(--muted); margin:10px 0 0; }
     .progress { display:none; margin-top:18px; }
     .progress.show { display:block; }
-    .resumebox { display:none; margin-top:14px; padding:14px; border:1px solid var(--line); border-radius:12px; background:#fffaf2; }
+    .resumebox { display:none; margin-top:14px; padding:14px; border:1px solid #3d3017; border-radius:12px; background:#241c10; }
     .resumebox.show { display:block; }
-    .resumetext { font-size:13px; color:#9a6a00; font-weight:600; margin-bottom:10px; line-height:1.45; }
+    .resumetext { font-size:13px; color:#f0b54a; font-weight:600; margin-bottom:10px; line-height:1.45; }
     a.cancel { display:inline-block; font-size:12px; color:var(--muted); text-decoration:none; }
-    a.cancel:hover { color:#ff3b30; }
+    a.cancel:hover { color:#ff453a; }
     .pbar-label { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:6px; }
-    .pbar { height:8px; background:#e8e8ed; border-radius:99px; overflow:hidden; }
+    .pbar { height:8px; background:#26262e; border-radius:99px; overflow:hidden; }
     .pbar > span { display:block; height:100%; width:0%; background:var(--accent); border-radius:99px; transition:width .3s; }
     .pbar.indet > span { width:40%; animation:slide 1.1s ease-in-out infinite; }
     @keyframes slide { 0%{margin-left:-40%} 100%{margin-left:100%} }
@@ -64,12 +66,12 @@
     .row { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--line); }
     .row:last-child { border-bottom:0; }
     .row b { font-weight:600; }
-    .badge.private { color:#34c759; font-weight:700; }
-    .err { color:#ff3b30; font-weight:600; }
+    .badge.private { color:#32d74b; font-weight:700; }
+    .err { color:#ff453a; font-weight:600; }
     .links a { color:var(--accent); text-decoration:none; }
-    .foot { text-align:center; color:#b0b0b8; font-size:12px; margin-top:18px; }
+    .foot { text-align:center; color:#56565e; font-size:12px; margin-top:18px; }
     .tabs { display:flex; gap:8px; margin-bottom:16px; }
-    .tab { width:auto; flex:1; background:#eef1f6; color:var(--ink); font-weight:600; padding:10px 14px; border-radius:11px; }
+    .tab { width:auto; flex:1; background:#26262e; color:var(--ink); font-weight:600; padding:10px 14px; border-radius:11px; }
     .tab.active { background:var(--accent); color:#fff; }
     .field { margin-bottom:14px; }
     .field label { margin-bottom:6px; }
@@ -164,7 +166,7 @@
       </div>
     </div>
 
-    <div class="foot">v0.11 — step 3</div>
+    <div class="foot">v0.12 — step 3</div>
   </div>
 
   <script>
