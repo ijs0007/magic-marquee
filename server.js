@@ -1,4 +1,4 @@
-// YouTube Uploader — Step 3 (v0.08): browser -> R2 (direct) -> background R2 ->
+// YouTube Uploader — Step 3 (v0.09): browser -> R2 (direct) -> background R2 ->
 // YouTube, plus AI metadata (title/description/chapters). Metadata can come from
 // an uploaded transcript, a logline, OR auto-transcription: ffmpeg pulls the audio
 // straight out of the R2 object and OpenAI Whisper turns it into a timed transcript.
@@ -10,6 +10,13 @@
 // ceiling. Small files keep the proven single-PUT path. The server orchestrates
 // the multipart create/complete (where credentials live) and hands the browser a
 // fresh presigned URL per part, so only raw part bytes ever touch R2 directly.
+//
+// v0.09 adds CHUNKED transcription for long films. Whisper accepts ~25MB of audio
+// per request (~65 min of film at our compressed settings). Films under that still
+// transcribe in one shot (unchanged). Longer films: the extracted audio is split
+// into ~15-min segments, each transcribed separately, then the SRT pieces are
+// stitched back into one transcript with timestamps shifted to their true position
+// (exact offsets read from ffmpeg's segment list), so chapters span the whole film.
 
 import express from "express";
 import crypto from "node:crypto";
@@ -27,7 +34,7 @@ import ffmpegStatic from "ffmpeg-static";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.08";
+const APP_VERSION = "0.09";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -193,6 +200,90 @@ function runFfmpeg(args) {
   });
 }
 
+// --- Chunked transcription sizing ---
+// Whisper accepts ~25MB per request; we gate at 24MB for headroom. Audio over
+// that gets split into CHUNK_SECONDS segments. At mono/16kHz/48kbps, 15 minutes
+// is ~5MB — far under the cap, with few seams.
+const WHISPER_MAX_BYTES = 24 * 1024 * 1024;
+const CHUNK_SECONDS = 900; // 15 minutes per segment
+
+// Send one audio file to Whisper, return its SRT (timestamped) transcript.
+// Reused by both the one-shot path and each chunk of the long-film path.
+async function whisperSrt(filePath) {
+  const audioBuf = await fs.promises.readFile(filePath);
+  const form = new FormData();
+  form.append("file", new Blob([audioBuf], { type: "audio/mpeg" }), "audio.mp3");
+  form.append("model", "whisper-1");
+  form.append("response_format", "srt");
+  const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+    body: form,
+  });
+  if (!r.ok) {
+    const errText = await r.text();
+    throw new Error(`Whisper request failed (HTTP ${r.status}): ${errText.slice(0, 300)}`);
+  }
+  return (await r.text()).trim();
+}
+
+// --- SRT timestamp helpers (pure, string-based, no regex) ---
+// Parse "HH:MM:SS,mmm" -> milliseconds. Tolerates "." for "," and trailing junk
+// after the timestamp (parseInt stops at the first non-digit).
+function srtTimeToMs(t) {
+  const s = String(t).trim();
+  const parts = (s.indexOf(",") !== -1 ? s.split(",") : s.split("."));
+  const hms = (parts[0] || "").split(":");
+  const h = parseInt(hms[0] || "0", 10) || 0;
+  const m = parseInt(hms[1] || "0", 10) || 0;
+  const sec = parseInt(hms[2] || "0", 10) || 0;
+  const ms = parseInt(parts[1] || "0", 10) || 0;
+  return (h * 3600 + m * 60 + sec) * 1000 + ms;
+}
+
+// Milliseconds -> "HH:MM:SS,mmm".
+function msToSrtTime(ms) {
+  if (ms < 0) ms = 0;
+  const totalSec = Math.floor(ms / 1000);
+  const msPart = ms % 1000;
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const sec = totalSec % 60;
+  const p2 = (n) => String(n).padStart(2, "0");
+  const p3 = (n) => String(n).padStart(3, "0");
+  return `${p2(h)}:${p2(m)}:${p2(sec)},${p3(msPart)}`;
+}
+
+// Shift every cue in an SRT block by offsetSec and renumber cues from startIndex.
+// Returns the rewritten block plus the next free index. A near-silent chunk that
+// Whisper returns empty for yields "" and leaves the index untouched.
+function shiftSrt(srt, offsetSec, startIndex) {
+  const norm = String(srt).split("\r\n").join("\n").split("\r").join("\n").trim();
+  if (!norm) return { text: "", nextIndex: startIndex };
+  const blocks = norm.split("\n\n");
+  const offMs = Math.round(offsetSec * 1000);
+  const out = [];
+  let idx = startIndex;
+  for (const block of blocks) {
+    const lines = block.split("\n");
+    let tIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf("-->") !== -1) { tIdx = i; break; }
+    }
+    if (tIdx === -1) continue; // not a real cue, skip
+    const timeLine = lines[tIdx];
+    const arrow = timeLine.indexOf("-->");
+    const startStr = timeLine.slice(0, arrow).trim();
+    const endStr = timeLine.slice(arrow + 3).trim();
+    const newStart = msToSrtTime(srtTimeToMs(startStr) + offMs);
+    const newEnd = msToSrtTime(srtTimeToMs(endStr) + offMs);
+    const textLines = lines.slice(tIdx + 1);
+    out.push(`${idx}\n${newStart} --> ${newEnd}\n${textLines.join("\n")}`.trimEnd());
+    idx++;
+  }
+  return { text: out.join("\n\n"), nextIndex: idx };
+}
+
 // Background transcription: pull the master from R2 to a local temp file in a steady
 // stream (constant memory, no matter the file size), extract a tiny mono 16kHz audio
 // track from that local file with ffmpeg (a local file is seek-friendly and keeps
@@ -203,6 +294,7 @@ async function runTranscription(jobId, key) {
   const job = transcribeJobs.get(jobId);
   const tmpVideo = path.join(os.tmpdir(), `yt-vid-${jobId}`);
   const tmpAudio = path.join(os.tmpdir(), `yt-aud-${jobId}.mp3`);
+  const segDir = path.join(os.tmpdir(), `yt-seg-${jobId}`);
   try {
     job.state = "fetching";
     const obj = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
@@ -215,32 +307,75 @@ async function runTranscription(jobId, key) {
       "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-f", "mp3",
       tmpAudio,
     ]);
+    // Video isn't needed past audio extraction — free the disk now. The finally
+    // unlink stays as a backstop.
+    await fs.promises.unlink(tmpVideo).catch(() => {});
 
     const stat = await fs.promises.stat(tmpAudio);
-    if (stat.size > 24 * 1024 * 1024) {
-      throw new Error(
-        `Extracted audio is ${(stat.size / 1048576).toFixed(1)}MB, over Whisper's 25MB limit — this film is too long for one-pass transcription (chunking is a future upgrade). Export an SRT from your editor and use that instead.`
-      );
-    }
+    let transcript;
 
-    job.state = "transcribing";
-    const audioBuf = await fs.promises.readFile(tmpAudio);
-    const form = new FormData();
-    form.append("file", new Blob([audioBuf], { type: "audio/mpeg" }), "audio.mp3");
-    form.append("model", "whisper-1");
-    form.append("response_format", "srt");
+    if (stat.size <= WHISPER_MAX_BYTES) {
+      // Short enough for one request — the original, proven path.
+      job.state = "transcribing";
+      transcript = await whisperSrt(tmpAudio);
+      if (!transcript) throw new Error("Whisper returned an empty transcript (near-silent audio?).");
+    } else {
+      // Too long for one request — split the audio into time segments, transcribe
+      // each, then stitch the SRTs using each segment's true start offset.
+      job.state = "segmenting";
+      await fs.promises.mkdir(segDir, { recursive: true });
+      const listPath = path.join(segDir, "segments.csv");
+      await runFfmpeg([
+        "-hide_banner", "-loglevel", "warning", "-y",
+        "-i", tmpAudio,
+        "-f", "segment",
+        "-segment_time", String(CHUNK_SECONDS),
+        "-reset_timestamps", "1",
+        "-segment_list", listPath,
+        "-segment_list_type", "csv",
+        "-c", "copy",
+        path.join(segDir, "chunk-%03d.mp3"),
+      ]);
 
-    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-      body: form,
-    });
-    if (!r.ok) {
-      const errText = await r.text();
-      throw new Error(`Whisper request failed (HTTP ${r.status}): ${errText.slice(0, 300)}`);
+      // Ordered segment files; exact start offsets come from the CSV rows
+      // (filename,start,end). Fall back to index*CHUNK_SECONDS if the CSV is
+      // missing or a row can't be parsed.
+      const dirFiles = (await fs.promises.readdir(segDir))
+        .filter((f) => f.startsWith("chunk-") && f.endsWith(".mp3"))
+        .sort();
+      if (dirFiles.length === 0) throw new Error("Audio split produced no segments.");
+
+      const startByName = {};
+      try {
+        const csv = await fs.promises.readFile(listPath, "utf8");
+        for (const lineRaw of csv.split("\n")) {
+          const line = lineRaw.trim();
+          if (!line) continue;
+          const cols = line.split(",");
+          const name = (cols[0] || "").trim();
+          const start = parseFloat(cols[1]);
+          if (name) startByName[name] = Number.isFinite(start) ? start : undefined;
+        }
+      } catch { /* fall back to index spacing below */ }
+
+      job.state = "transcribing";
+      job.chunkTotal = dirFiles.length;
+      const pieces = [];
+      let nextIndex = 1;
+      for (let k = 0; k < dirFiles.length; k++) {
+        job.chunkIndex = k + 1;
+        const name = dirFiles[k];
+        const offsetSec = Number.isFinite(startByName[name]) ? startByName[name] : k * CHUNK_SECONDS;
+        const srt = await whisperSrt(path.join(segDir, name));
+        const shifted = shiftSrt(srt, offsetSec, nextIndex);
+        if (shifted.text) {
+          pieces.push(shifted.text);
+          nextIndex = shifted.nextIndex;
+        }
+      }
+      transcript = pieces.join("\n\n").trim();
+      if (!transcript) throw new Error("Whisper returned empty transcripts for every segment (near-silent film?).");
     }
-    const transcript = (await r.text()).trim();
-    if (!transcript) throw new Error("Whisper returned an empty transcript (near-silent audio?).");
 
     job.state = "done";
     job.transcript = transcript;
@@ -251,6 +386,7 @@ async function runTranscription(jobId, key) {
   } finally {
     fs.promises.unlink(tmpVideo).catch(() => {});
     fs.promises.unlink(tmpAudio).catch(() => {});
+    fs.promises.rm(segDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
