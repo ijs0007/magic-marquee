@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.18";
+const APP_VERSION = "0.19";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -944,8 +944,8 @@ app.post("/api/metadata", async (req, res) => {
     "- title: a CATCHY, attention-grabbing title in the style of viral YouTube short films — a punchy, present-tense hook that captures the central conflict, the surprising turn, or the emotional stakes and makes someone want to click. Under 90 characters, Title Case, no emoji. It must stay TRUE to the film: create intrigue, never deceive, and never reveal the ending. Match the dramatic, curiosity-driven style of this channel's real titles, e.g. \"Boss Lady Shocks Co-worker With Unexpected Act of Kindness\", \"Woman Vows To Never Forgive Her Sister Again\", \"Man Blames Himself For Wife's Death, Contemplates Suicide\". Do NOT add the channel name or any '| ...' suffix — that is added separately.",
     "- synopsis: 1-3 short paragraphs describing the film in an engaging, spoiler-light way (set premise and tone; do not reveal the ending). Plain paragraphs only — no chapter timestamps, no section headers, no calls to subscribe.",
     '- chapters: ONLY if the transcript includes timestamps, a newline-separated list of chapter markers, one per line, in the format "M:SS Label" (use "H:MM:SS Label" for films over an hour). The FIRST line MUST start at "0:00". Provide at least 3 chapters, each at least 10 seconds after the previous one, anchored to real shifts in the transcript (scene/beat changes). If the transcript has NO timestamps, return an empty string "" — do not invent chapters.',
-    "- If the transcript is empty or nearly silent (little/no dialogue), rely on the logline for the synopsis. Do not fabricate plot or dialogue that the inputs don't support.",
-    "- Output ONLY the JSON object — no markdown code fences, no commentary before or after.",
+    "- If the transcript is empty or nearly silent (little/no dialogue), base the synopsis on the logline. If there is ALSO no logline, infer a short, plausible title and synopsis from the filename; if even that gives nothing, use a simple generic title and a one-line placeholder synopsis. Keep it modest — don't invent specific plot or dialogue the inputs don't support — but ALWAYS fill the fields.",
+    "- CRITICAL: Respond with ONLY the JSON object and nothing else — no markdown fences, no commentary, no apologies, no questions. Even when inputs are thin, you must still return valid JSON with all three fields. Never reply in prose.",
   ].join("\n");
 
   const userContent = [
@@ -968,7 +968,12 @@ app.post("/api/metadata", async (req, res) => {
         model: METADATA_MODEL,
         max_tokens: 4000,
         system,
-        messages: [{ role: "user", content: userContent }],
+        // Prefill the reply with "{" so the model is forced to continue as JSON
+        // (it cannot wander into prose). We prepend the "{" back below.
+        messages: [
+          { role: "user", content: userContent },
+          { role: "assistant", content: "{" },
+        ],
       }),
     });
 
@@ -978,11 +983,12 @@ app.post("/api/metadata", async (req, res) => {
     }
 
     const data = await r.json();
-    const raw = (data.content || [])
+    // We prefilled the assistant turn with "{", so the model returns the
+    // continuation — prepend the "{" back to reconstruct the full JSON.
+    const raw = ("{" + (data.content || [])
       .filter((b) => b && b.type === "text")
       .map((b) => b.text)
-      .join("")
-      .trim();
+      .join("")).trim();
 
     // Robust extraction: pull the outermost {...} so stray fences/preamble
     // can't break JSON.parse. String slicing only — clipboard-safe, no regex.
