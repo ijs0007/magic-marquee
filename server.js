@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.15";
+const APP_VERSION = "0.16";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -61,6 +61,10 @@ const aiConfigured = Boolean(ANTHROPIC_API_KEY);
 // Needs ffmpeg (from ffmpeg-static) to extract audio from the video.
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const transcribeConfigured = Boolean(OPENAI_API_KEY && ffmpegStatic);
+// Magic Story Maker bridge: read crew/cast for a project from MSM's export door.
+const MSM_BASE_URL = (function () { let u = process.env.MSM_BASE_URL || ""; while (u.endsWith("/")) u = u.slice(0, -1); return u; })();
+const MSM_EXPORT_KEY = process.env.MSM_EXPORT_KEY || "";
+const msmConfigured = Boolean(MSM_BASE_URL && MSM_EXPORT_KEY);
 
 const BASE_URL = (
   process.env.BASE_URL ||
@@ -260,7 +264,9 @@ function applyTemplate(str, values) {
 }
 
 // Build final title + description from the AI's pieces and the saved template.
-function composeMetadata({ aiTitle, synopsis, chapters }) {
+// Optional castText/crewText fill the {{CAST}}/{{CREW}} slots (from an MSM
+// project); when omitted they fall back to the template defaults (blank).
+function composeMetadata({ aiTitle, synopsis, chapters, castText, crewText }) {
   const tpl = templateCache;
   const titleTpl = tpl.title_template || "{{TITLE}}";
   const descTpl = tpl.description_template || "{{SYNOPSIS}}\n\n{{CHAPTERS}}";
@@ -268,6 +274,8 @@ function composeMetadata({ aiTitle, synopsis, chapters }) {
   const values = Object.assign({}, tpl.defaults || {});
   values.SYNOPSIS = String(synopsis || "");
   values.CHAPTERS = String(chapters || "");
+  if (castText != null) values.CAST = String(castText);
+  if (crewText != null) values.CREW = String(crewText);
 
   // Reserve room so the composed title (with suffix) stays under YouTube's 100.
   const reserve = applyTemplate(titleTpl, Object.assign({}, values, { TITLE: "" })).length;
@@ -657,6 +665,7 @@ app.get("/api/status", (req, res) => {
     aiConfigured,
     transcribeConfigured,
     dbConfigured,
+    msmConfigured,
     redirectUri: REDIRECT_URI,
   });
 });
@@ -960,8 +969,11 @@ app.post("/api/metadata", async (req, res) => {
       return res.status(502).json({ error: "AI returned empty metadata." });
     }
     // Fill the saved template's slots and compose the final title + description.
-    const composed = composeMetadata({ aiTitle, synopsis, chapters });
-    res.json({ title: composed.title, description: composed.description, rawTitle: aiTitle, synopsis });
+    // castText/crewText (from a selected MSM project) fill {{CAST}}/{{CREW}}.
+    const castText = (req.body && req.body.castText != null) ? String(req.body.castText) : undefined;
+    const crewText = (req.body && req.body.crewText != null) ? String(req.body.crewText) : undefined;
+    const composed = composeMetadata({ aiTitle, synopsis, chapters, castText, crewText });
+    res.json({ title: composed.title, description: composed.description, rawTitle: aiTitle, synopsis, chapters });
   } catch (err) {
     res.status(500).json({ error: err?.message || String(err) });
   }
@@ -1018,8 +1030,47 @@ app.post("/api/template", async (req, res) => {
   }
 });
 
-// --- Thumbnail maker --------------------------------------------------------
+// Recompose the description from the AI's pieces + (optionally) a project's
+// cast/crew — no AI call, so picking a project never rewrites the title.
+app.post("/api/recompose", (req, res) => {
+  const b = req.body || {};
+  const composed = composeMetadata({
+    aiTitle: String(b.rawTitle || ""),
+    synopsis: String(b.synopsis || ""),
+    chapters: String(b.chapters || ""),
+    castText: b.castText != null ? String(b.castText) : undefined,
+    crewText: b.crewText != null ? String(b.crewText) : undefined,
+  });
+  res.json({ title: composed.title, description: composed.description });
+});
 
+// --- Magic Story Maker bridge (server-to-server, key stays here) -------------
+async function msmFetch(pathAndQuery) {
+  const r = await fetch(MSM_BASE_URL + pathAndQuery, { headers: { "X-Export-Key": MSM_EXPORT_KEY } });
+  const text = await r.text();
+  let data; try { data = JSON.parse(text); } catch { data = { error: text.slice(0, 200) }; }
+  return { ok: r.ok, status: r.status, data };
+}
+app.get("/api/msm/projects", async (req, res) => {
+  if (!msmConfigured) return res.status(503).json({ error: "MSM link not set up (set MSM_BASE_URL + MSM_EXPORT_KEY)." });
+  try {
+    const out = await msmFetch("/api/export/projects");
+    if (!out.ok) return res.status(out.status).json({ error: out.data.error || "MSM request failed." });
+    res.json(out.data);
+  } catch (err) { res.status(502).json({ error: err?.message || String(err) }); }
+});
+app.get("/api/msm/credits", async (req, res) => {
+  if (!msmConfigured) return res.status(503).json({ error: "MSM link not set up." });
+  const id = String(req.query.id || "");
+  if (!id) return res.status(400).json({ error: "Missing project id." });
+  try {
+    const out = await msmFetch("/api/export/credits?project=" + encodeURIComponent(id));
+    if (!out.ok) return res.status(out.status).json({ error: out.data.error || "MSM request failed." });
+    res.json(out.data);
+  } catch (err) { res.status(502).json({ error: err?.message || String(err) }); }
+});
+
+// --- Thumbnail maker --------------------------------------------------------
 // TH-1: kick off background frame extraction from the R2 master.
 app.post("/api/thumb/frames", (req, res) => {
   if (!r2Configured) return res.status(500).json({ error: "R2 not configured." });
@@ -1137,4 +1188,5 @@ app.listen(PORT, () => {
   console.log(`AI metadata configured: ${aiConfigured}`);
   console.log(`Transcription configured: ${transcribeConfigured}`);
   console.log(`Database configured: ${dbConfigured}`);
+  console.log(`MSM bridge configured: ${msmConfigured}`);
 });

@@ -32,6 +32,10 @@
       width:100%; font:inherit; color:var(--ink); padding:11px 12px; border:1px solid var(--line);
       border-radius:11px; background:#101014; margin-bottom:16px;
     }
+    select {
+      width:100%; font:inherit; color:var(--ink); padding:11px 12px; border:1px solid var(--line);
+      border-radius:11px; background:#101014; margin-bottom:8px; cursor:pointer;
+    }
     input[type=file] { padding:9px 12px; }
     input::placeholder, textarea::placeholder { color:#6a6a73; }
     button {
@@ -135,6 +139,12 @@
       <label for="logline">Logline (optional)</label>
       <input type="text" id="logline" placeholder="One line about the film — used if it has little dialogue">
 
+      <div id="msmRow" style="display:none">
+        <label for="msmProject">Magic Story Maker project <span class="ctlval">— auto-fills cast &amp; crew</span></label>
+        <select id="msmProject"><option value="">— none —</option></select>
+        <p class="genstatus" id="msmStatus" style="margin-top:6px"></p>
+      </div>
+
       <button id="genBtn" class="secondary" disabled>✨ Generate title &amp; description</button>
       <p class="genstatus" id="genStatus"></p>
 
@@ -226,7 +236,7 @@
       </div>
     </div>
 
-    <div class="foot">v0.15 — step 3</div>
+    <div class="foot">v0.16 — step 3</div>
   </div>
 
   <script>
@@ -271,6 +281,7 @@
     let ready = false;            // YouTube + R2 ready (upload allowed)
     let aiReady = false;          // Anthropic key set (Generate allowed)
     let transcribeReady = false;  // OpenAI key + ffmpeg set (Whisper allowed)
+    let msmReady = false;         // MSM bridge configured (project dropdown shown)
     let transcriptText = '';
     let pendingKey = null;        // R2 key awaiting "Send to YouTube" after review
 
@@ -279,6 +290,9 @@
     let lastUploadKey = null;     // R2 key of the uploaded master (for frame grab)
     let lastSynopsis = '';        // stashed from metadata, feeds the overlay AI
     let lastRawTitle = '';
+    let lastChapters = '';        // stashed so we can recompose without re-running AI
+    let selectedCastText = '';    // formatted cast block from the chosen MSM project
+    let selectedCrewText = '';    // formatted crew block
     let overlayLines = [];        // [[{t,b}],...] source of truth for the text
     let thumbFrameImg = null;     // current background Image
     let thumbPos = 'bl';          // text anchor: [t/m/b][l/c/r]
@@ -295,6 +309,7 @@
         const s = await (await fetch('/api/status')).json();
         aiReady = Boolean(s.aiConfigured);
         transcribeReady = Boolean(s.transcribeConfigured);
+        msmReady = Boolean(s.msmConfigured);
         if (!s.configured) {
           dot.className = 'dot warn';
           statusText.textContent = 'Missing YouTube credentials — set CLIENT_ID / CLIENT_SECRET in Render.';
@@ -315,6 +330,7 @@
         statusText.textContent = 'Could not reach server.';
       }
       whisperRow.style.display = transcribeReady ? 'flex' : 'none';
+      if (msmReady) loadMsmProjects();
       updateBtn();
       renderAiNote();
       updateGenBtn();
@@ -358,7 +374,9 @@
         body: JSON.stringify({
           transcript: transcript,
           logline: logline,
-          filename: (fileInput.files[0] && fileInput.files[0].name) || ''
+          filename: (fileInput.files[0] && fileInput.files[0].name) || '',
+          castText: selectedCastText || undefined,
+          crewText: selectedCrewText || undefined
         })
       }).then(r => r.json());
     }
@@ -376,7 +394,7 @@
         } else {
           titleInput.value = md.title || '';
           descInput.value = md.description || '';
-          lastSynopsis = md.synopsis || ''; lastRawTitle = md.rawTitle || '';
+          lastSynopsis = md.synopsis || ''; lastRawTitle = md.rawTitle || ''; lastChapters = md.chapters || '';
           // Wrote it manually — don't also auto-transcribe over it on upload.
           if (whisperChk) whisperChk.checked = false;
           genStatus.innerHTML = '<span style="color:#34c759">Done — edit the title or description below before uploading.</span>';
@@ -635,7 +653,7 @@
       if (md.error) throw new Error(md.error);
       titleInput.value = md.title || '';
       descInput.value = md.description || '';
-      lastSynopsis = md.synopsis || ''; lastRawTitle = md.rawTitle || '';
+      lastSynopsis = md.synopsis || ''; lastRawTitle = md.rawTitle || ''; lastChapters = md.chapters || '';
 
       pTwrap.classList.remove('indet'); pTbar.style.width = '100%';
       pTlabel.textContent = 'Done — review below';
@@ -1281,6 +1299,67 @@
       a.download = 'thumbnail.jpg';
       a.click();
     });
+
+    // ---- Magic Story Maker project bridge ----
+    var msmProjectsLoaded = false;
+    function loadMsmProjects() {
+      if (msmProjectsLoaded) return;
+      msmProjectsLoaded = true;
+      var row = document.getElementById('msmRow');
+      var sel = document.getElementById('msmProject');
+      fetch('/api/msm/projects').then(function (r) { return r.json(); }).then(function (res) {
+        if (!res.projects || !res.projects.length) return;
+        res.projects.forEach(function (p) {
+          var o = document.createElement('option');
+          o.value = p.id; o.textContent = p.title;
+          sel.appendChild(o);
+        });
+        row.style.display = 'block';
+      }).catch(function () { });
+    }
+
+    function fmtCredits(list, isCrew) {
+      return (list || []).map(function (x) {
+        var name = (x.name || '').trim(), role = (x.role || '').trim();
+        if (!name) return '';
+        if (!role) return name;
+        return isCrew ? (role + ' \u2014 ' + name) : (name + ' as ' + role);
+      }).filter(function (s) { return s; }).join('\n');
+    }
+
+    // Refill the description with the chosen credits — no AI call, title unchanged.
+    function recomposeWithCredits() {
+      if (!lastRawTitle && !lastSynopsis) return; // nothing generated yet; applies on Generate
+      fetch('/api/recompose', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawTitle: lastRawTitle, synopsis: lastSynopsis, chapters: lastChapters, castText: selectedCastText, crewText: selectedCrewText })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res.title) titleInput.value = res.title;
+        if (res.description != null) descInput.value = res.description;
+      }).catch(function () { });
+    }
+
+    (function () {
+      var sel = document.getElementById('msmProject');
+      var status = document.getElementById('msmStatus');
+      sel.addEventListener('change', function () {
+        var id = sel.value;
+        if (!id) {
+          selectedCastText = ''; selectedCrewText = ''; status.textContent = '';
+          recomposeWithCredits();
+          return;
+        }
+        status.innerHTML = '<span style="color:var(--muted)">Pulling cast &amp; crew\u2026</span>';
+        fetch('/api/msm/credits?id=' + encodeURIComponent(id)).then(function (r) { return r.json(); }).then(function (res) {
+          if (res.error) { status.innerHTML = '<span class="err">' + res.error + '</span>'; return; }
+          selectedCastText = fmtCredits(res.cast, false);
+          selectedCrewText = fmtCredits(res.crew, true);
+          var nc = (res.cast || []).length, nr = (res.crew || []).length;
+          status.innerHTML = '<span style="color:#34c759">Pulled ' + nc + ' cast, ' + nr + ' crew from ' + (res.title || 'project') + '. They\'ll fill the description.</span>';
+          recomposeWithCredits();
+        }).catch(function (e) { status.innerHTML = '<span class="err">' + e.message + '</span>'; });
+      });
+    })();
 
     refreshStatus();
   </script>
