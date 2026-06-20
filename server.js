@@ -17,6 +17,13 @@
 // into ~15-min segments, each transcribed separately, then the SRT pieces are
 // stitched back into one transcript with timestamps shifted to their true position
 // (exact offsets read from ffmpeg's segment list), so chapters span the whole film.
+//
+// v0.10 adds a TEMPLATE system backed by Neon Postgres (yt_settings table in the
+// shared DB). The user saves a permanent title + description scaffold with {{TOKEN}}
+// slots. On each generate, the AI returns title/synopsis/chapters as separate
+// pieces; the server fills {{TITLE}}, {{SYNOPSIS}}, {{CHAPTERS}} automatically and
+// any other {{NAME}} from saved defaults, then composes the final title +
+// description. AI drives everything; the user overrides any field afterward.
 
 import express from "express";
 import crypto from "node:crypto";
@@ -31,10 +38,11 @@ import { google } from "googleapis";
 import { S3Client, GetObjectCommand, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import ffmpegStatic from "ffmpeg-static";
+import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.09";
+const APP_VERSION = "0.10";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -87,6 +95,21 @@ const s3 = r2Configured
     })
   : null;
 
+// --- Neon Postgres (shared DB; yt_-prefixed tables) ---
+// Holds the permanent template + saved field defaults. If DATABASE_URL is unset
+// the app still runs — it just uses a built-in default template and the Template
+// tab can't save. Neon always uses SSL; local connections don't.
+const { Pool } = pg;
+const DATABASE_URL = process.env.DATABASE_URL;
+const dbConfigured = Boolean(DATABASE_URL);
+const isLocalDb = dbConfigured && (DATABASE_URL.includes("localhost") || DATABASE_URL.includes("127.0.0.1"));
+const pool = dbConfigured
+  ? new Pool({
+      connectionString: DATABASE_URL,
+      ssl: isLocalDb ? undefined : { rejectUnauthorized: false },
+    })
+  : null;
+
 let refreshToken = process.env.YT_REFRESH_TOKEN || null;
 
 // In-memory transfer jobs (single-user tool; master lives safely in R2, so a
@@ -130,6 +153,164 @@ function planParts(size) {
   }
   const partCount = Math.max(1, Math.ceil(total / partSize));
   return { partSize, partCount };
+}
+
+// --- Template system -------------------------------------------------------
+// AUTO_TOKENS fill themselves on each generate. Any other {{NAME}} in a template
+// is a "field" whose value comes from saved defaults (and, later, the MSM project).
+const AUTO_TOKENS = ["TITLE", "SYNOPSIS", "CHAPTERS"];
+
+const DEFAULT_TITLE_TEMPLATE = "{{TITLE}} | Isaiah Jeremiah";
+
+const DEFAULT_DESCRIPTION_TEMPLATE = [
+  "{{SYNOPSIS}}",
+  "",
+  "***Don't forget to SUBSCRIBE to my channel by clicking here \u279e \u279e https://www.youtube.com/channel/UCa0wyHu46RdbzDRJV88mq8A",
+  "",
+  "***Make sure you CLICK THE BELL ICON so you can get notifications when my next video goes up so you don't miss anything!",
+  "",
+  "CONNECT WITH ME",
+  "Instagram - instagram.com/isaiahjeremiahsmith",
+  "Facebook - facebook.com/isaiahsmith",
+  "TikTok - tiktok.com/@isaiahjeremiahsmith",
+  "Website - isaiahsmithfilms.com",
+  "",
+  "CREW",
+  "",
+  "DIRECTED BY",
+  "{{DIRECTOR}}",
+  "",
+  "EDITED BY",
+  "{{EDITOR}}",
+  "",
+  "CAST",
+  "{{CAST}}",
+  "",
+  "Chapter Markers",
+  "{{CHAPTERS}}",
+].join("\n");
+
+// In-memory copy of the saved template so /api/metadata doesn't hit the DB each
+// generate. Seeded with the built-in default; replaced by the DB row at startup
+// and after every save.
+let templateCache = {
+  title_template: DEFAULT_TITLE_TEMPLATE,
+  description_template: DEFAULT_DESCRIPTION_TEMPLATE,
+  defaults: {},
+};
+
+// Find unique {{TOKEN}} names in a string (uppercased). String-only, no regex.
+function scanTokens(text) {
+  const s = String(text || "");
+  const out = [];
+  let i = 0;
+  while (true) {
+    const a = s.indexOf("{{", i);
+    if (a === -1) break;
+    const b = s.indexOf("}}", a + 2);
+    if (b === -1) break;
+    const name = s.slice(a + 2, b).trim().toUpperCase();
+    if (name && out.indexOf(name) === -1) out.push(name);
+    i = b + 2;
+  }
+  return out;
+}
+
+// Collapse runs of blank lines to one, strip trailing spaces, trim ends.
+function tidyText(text) {
+  const trimmed = String(text).split("\n").map((l) => {
+    let x = l;
+    while (x.endsWith(" ") || x.endsWith("\t")) x = x.slice(0, -1);
+    return x;
+  });
+  const out = [];
+  let blankRun = 0;
+  for (const l of trimmed) {
+    if (l.trim() === "") {
+      blankRun++;
+      if (blankRun <= 1) out.push("");
+    } else {
+      blankRun = 0;
+      out.push(l);
+    }
+  }
+  while (out.length && out[0] === "") out.shift();
+  while (out.length && out[out.length - 1] === "") out.pop();
+  return out.join("\n");
+}
+
+// Replace every {{TOKEN}} with values[TOKEN] (missing -> ""), then tidy. No regex.
+function applyTemplate(str, values) {
+  const s = String(str || "");
+  let out = "";
+  let i = 0;
+  while (true) {
+    const a = s.indexOf("{{", i);
+    if (a === -1) { out += s.slice(i); break; }
+    const b = s.indexOf("}}", a + 2);
+    if (b === -1) { out += s.slice(i); break; }
+    out += s.slice(i, a);
+    const name = s.slice(a + 2, b).trim().toUpperCase();
+    out += Object.prototype.hasOwnProperty.call(values, name) ? String(values[name] ?? "") : "";
+    i = b + 2;
+  }
+  return tidyText(out);
+}
+
+// Build final title + description from the AI's pieces and the saved template.
+function composeMetadata({ aiTitle, synopsis, chapters }) {
+  const tpl = templateCache;
+  const titleTpl = tpl.title_template || "{{TITLE}}";
+  const descTpl = tpl.description_template || "{{SYNOPSIS}}\n\n{{CHAPTERS}}";
+
+  const values = Object.assign({}, tpl.defaults || {});
+  values.SYNOPSIS = String(synopsis || "");
+  values.CHAPTERS = String(chapters || "");
+
+  // Reserve room so the composed title (with suffix) stays under YouTube's 100.
+  const reserve = applyTemplate(titleTpl, Object.assign({}, values, { TITLE: "" })).length;
+  const titleCap = Math.max(10, 100 - reserve);
+  values.TITLE = String(aiTitle || "").slice(0, titleCap);
+
+  const title = applyTemplate(titleTpl, values).slice(0, 100);
+  const description = applyTemplate(descTpl, values).slice(0, 4900);
+  return { title, description };
+}
+
+// Create the table, seed the default row once, and load the cache.
+async function initDb() {
+  if (!dbConfigured) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS yt_settings (
+      id INTEGER PRIMARY KEY,
+      title_template TEXT NOT NULL,
+      description_template TEXT NOT NULL,
+      defaults JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT yt_settings_singleton CHECK (id = 1)
+    )
+  `);
+  await pool.query(
+    `INSERT INTO yt_settings (id, title_template, description_template, defaults)
+     VALUES (1, $1, $2, '{}'::jsonb)
+     ON CONFLICT (id) DO NOTHING`,
+    [DEFAULT_TITLE_TEMPLATE, DEFAULT_DESCRIPTION_TEMPLATE]
+  );
+  await refreshTemplateCache();
+}
+
+async function refreshTemplateCache() {
+  if (!dbConfigured) return;
+  const { rows } = await pool.query(
+    `SELECT title_template, description_template, defaults FROM yt_settings WHERE id = 1`
+  );
+  if (rows[0]) {
+    templateCache = {
+      title_template: rows[0].title_template || DEFAULT_TITLE_TEMPLATE,
+      description_template: rows[0].description_template || DEFAULT_DESCRIPTION_TEMPLATE,
+      defaults: rows[0].defaults || {},
+    };
+  }
 }
 
 // Background transfer: stream the object from R2 straight into a YouTube
@@ -404,6 +585,7 @@ app.get("/api/status", (req, res) => {
     r2Configured,
     aiConfigured,
     transcribeConfigured,
+    dbConfigured,
     redirectUri: REDIRECT_URI,
   });
 });
@@ -638,13 +820,13 @@ app.post("/api/metadata", async (req, res) => {
     "You write YouTube metadata for an independent filmmaker's FICTIONAL narrative short films (channel: Isaiah Jeremiah).",
     "You receive a transcript of one short film (it may include timestamps if exported as SRT/VTT, or be plain text with none) and possibly a one-line logline.",
     "",
-    'Respond with a SINGLE JSON object with exactly two string fields: "title" and "description". No other keys.',
+    'Respond with a SINGLE JSON object with exactly three string fields: "title", "synopsis", and "chapters". No other keys.',
     "",
     "Rules:",
-    "- title: a compelling, human title for a narrative short film, under 100 characters. No clickbait, no emoji spam, no SEO keyword stuffing. It should read like a real film title.",
-    "- description: 1-3 short paragraphs describing the film in an engaging, spoiler-light way (set premise and tone; do not reveal the ending).",
-    '- CHAPTERS: ONLY if the transcript includes timestamps, append a blank line after the paragraphs, then chapter markers one per line in the format "M:SS Label" (use "H:MM:SS Label" for films over an hour). The FIRST chapter MUST be "0:00". Provide at least 3 chapters, each at least 10 seconds after the previous one, anchored to real shifts in the transcript (scene/beat changes). If the transcript has NO timestamps, do not invent chapters — omit them entirely.',
-    "- If the transcript is empty or nearly silent (little/no dialogue), rely on the logline. Do not fabricate plot or dialogue that the inputs don't support.",
+    "- title: a compelling, human title for a narrative short film, under 90 characters. No clickbait, no emoji spam, no SEO keyword stuffing. It should read like a real film title. Do NOT add the channel name or any '| ...' suffix — that is added separately.",
+    "- synopsis: 1-3 short paragraphs describing the film in an engaging, spoiler-light way (set premise and tone; do not reveal the ending). Plain paragraphs only — no chapter timestamps, no section headers, no calls to subscribe.",
+    '- chapters: ONLY if the transcript includes timestamps, a newline-separated list of chapter markers, one per line, in the format "M:SS Label" (use "H:MM:SS Label" for films over an hour). The FIRST line MUST start at "0:00". Provide at least 3 chapters, each at least 10 seconds after the previous one, anchored to real shifts in the transcript (scene/beat changes). If the transcript has NO timestamps, return an empty string "" — do not invent chapters.',
+    "- If the transcript is empty or nearly silent (little/no dialogue), rely on the logline for the synopsis. Do not fabricate plot or dialogue that the inputs don't support.",
     "- Output ONLY the JSON object — no markdown code fences, no commentary before or after.",
   ].join("\n");
 
@@ -700,12 +882,66 @@ app.post("/api/metadata", async (req, res) => {
       return res.status(502).json({ error: "AI returned unparseable output.", raw: raw.slice(0, 500) });
     }
 
-    const title = String(parsed.title || "").slice(0, 100);
-    const description = String(parsed.description || "").slice(0, 4900); // < YouTube 5000 cap
-    if (!title && !description) {
+    const aiTitle = String(parsed.title || "").trim();
+    const synopsis = String(parsed.synopsis || "").trim();
+    const chapters = String(parsed.chapters || "").trim();
+    if (!aiTitle && !synopsis) {
       return res.status(502).json({ error: "AI returned empty metadata." });
     }
-    res.json({ title, description });
+    // Fill the saved template's slots and compose the final title + description.
+    const composed = composeMetadata({ aiTitle, synopsis, chapters });
+    res.json({ title: composed.title, description: composed.description });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// Template: the permanent title + description scaffold (with {{TOKEN}} slots) plus
+// saved field defaults. Returns the built-in default when the DB isn't configured.
+app.get("/api/template", async (req, res) => {
+  try {
+    if (dbConfigured) await refreshTemplateCache();
+    res.json({
+      titleTemplate: templateCache.title_template,
+      descriptionTemplate: templateCache.description_template,
+      defaults: templateCache.defaults || {},
+      autoTokens: AUTO_TOKENS,
+      persisted: dbConfigured,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// Save the template. Keeps default values only for tokens that actually appear in
+// the templates and aren't auto-filled, so saved defaults stay tidy.
+app.post("/api/template", async (req, res) => {
+  if (!dbConfigured) {
+    return res.status(500).json({ error: "Can't save — set DATABASE_URL in Render to turn on templates." });
+  }
+  const { titleTemplate, descriptionTemplate, defaults } = req.body || {};
+  const titleTpl = String(titleTemplate || "").slice(0, 5000);
+  const descTpl = String(descriptionTemplate || "").slice(0, 20000);
+  if (!titleTpl.trim() && !descTpl.trim()) {
+    return res.status(400).json({ error: "Template is empty." });
+  }
+  const used = scanTokens(titleTpl + "\n" + descTpl).filter((t) => AUTO_TOKENS.indexOf(t) === -1);
+  const inDefaults = (defaults && typeof defaults === "object") ? defaults : {};
+  const cleanDefaults = {};
+  for (const t of used) cleanDefaults[t] = String(inDefaults[t] ?? "").slice(0, 4000);
+  try {
+    await pool.query(
+      `INSERT INTO yt_settings (id, title_template, description_template, defaults, updated_at)
+       VALUES (1, $1, $2, $3::jsonb, now())
+       ON CONFLICT (id) DO UPDATE SET
+         title_template = EXCLUDED.title_template,
+         description_template = EXCLUDED.description_template,
+         defaults = EXCLUDED.defaults,
+         updated_at = now()`,
+      [titleTpl, descTpl, JSON.stringify(cleanDefaults)]
+    );
+    await refreshTemplateCache();
+    res.json({ ok: true, fields: used });
   } catch (err) {
     res.status(500).json({ error: err?.message || String(err) });
   }
@@ -730,10 +966,13 @@ app.get("/api/r2test", async (req, res) => {
   }
 });
 
+initDb().catch((e) => console.error("DB init failed (templates fall back to the built-in default):", e?.message || e));
+
 app.listen(PORT, () => {
   console.log(`YouTube uploader v${APP_VERSION} listening on ${BASE_URL}`);
   console.log(`Redirect URI to register in Google Cloud: ${REDIRECT_URI}`);
   console.log(`R2 configured: ${r2Configured}`);
   console.log(`AI metadata configured: ${aiConfigured}`);
   console.log(`Transcription configured: ${transcribeConfigured}`);
+  console.log(`Database configured: ${dbConfigured}`);
 });
