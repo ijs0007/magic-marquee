@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.16";
+const APP_VERSION = "0.17";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -617,10 +617,13 @@ async function runFrameExtraction(jobId, key) {
 
     job.state = "extracting";
     const dur = await ffmpegProbeDuration(tmpVideo);
-    const pcts = [0.10, 0.25, 0.40, 0.55, 0.70, 0.85];
+    // 15 candidate frames evenly spread across the film (skipping the very
+    // start/end). More choices to pick the best thumbnail moment from.
+    const FRAME_COUNT = 15;
+    const pcts = Array.from({ length: FRAME_COUNT }, (_, i) => 0.05 + (0.93 - 0.05) * (i / (FRAME_COUNT - 1)));
     let idx = 0;
     for (const p of pcts) {
-      const t = dur > 0 ? dur * p : (idx * 1.5 + 0.5); // fallback: early offsets
+      const t = dur > 0 ? dur * p : (idx * 1.2 + 0.4); // fallback: early offsets
       const out = path.join(os.tmpdir(), `yt-thumbf-${jobId}-${idx}.jpg`);
       framePaths.push(out);
       idx++;

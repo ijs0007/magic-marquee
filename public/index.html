@@ -92,8 +92,8 @@
     .posgrid { display:grid; grid-template-columns:repeat(3,40px); gap:6px; margin-bottom:18px; }
     .posgrid button { width:40px; height:40px; background:#26262e; color:var(--muted); padding:0; border-radius:8px; font-size:16px; line-height:1; }
     .posgrid button.sel { background:var(--accent); color:#fff; }
-    .segmented { display:flex; gap:4px; background:#16161b; border:1px solid var(--line); border-radius:10px; padding:4px; margin-bottom:14px; }
-    .segmented button { flex:1; width:auto; background:transparent; color:var(--muted); padding:9px 0; border-radius:7px; font-size:14px; font-weight:600; }
+    .segmented { display:flex; flex-wrap:wrap; gap:4px; background:#16161b; border:1px solid var(--line); border-radius:10px; padding:4px; margin-bottom:14px; }
+    .segmented button { flex:1 1 70px; width:auto; background:transparent; color:var(--muted); padding:9px 0; border-radius:7px; font-size:13px; font-weight:600; }
     .segmented button.sel { background:var(--accent); color:#fff; }
     #thumbCanvas { width:100%; height:auto; border-radius:12px; display:block; background:#000; margin-bottom:12px; touch-action:none; cursor:grab; }
     #thumbCanvas:active { cursor:grabbing; }
@@ -187,6 +187,8 @@
       <label style="font-size:15px; color:var(--ink); margin-bottom:12px">Thumbnail</label>
       <div id="styleToggle" class="segmented">
         <button type="button" data-style="cinematic" class="sel">Cinematic</button>
+        <button type="button" data-style="spotlight">Spotlight</button>
+        <button type="button" data-style="sidebar">Sidebar</button>
         <button type="button" data-style="blocks">Blocks</button>
       </div>
       <canvas id="thumbCanvas" width="1280" height="720"></canvas>
@@ -236,7 +238,7 @@
       </div>
     </div>
 
-    <div class="foot">v0.16 — step 3</div>
+    <div class="foot">v0.17 — step 3</div>
   </div>
 
   <script>
@@ -981,23 +983,22 @@
       ctx.lineWidth = bw; ctx.strokeStyle = '#f45911'; ctx.stroke();
     }
 
-    function drawBadge(ctx, W, H, style) {
-      var cine = style === 'cinematic';
-      var M = 34, pillH = cine ? 70 : 84, avD = pillH - (cine ? 16 : 22), pad = 12;
-      var nameFs = cine ? 21 : 23;
+    function drawBadge(ctx, W, H, corner, subtle) {
+      var M = 34, pillH = subtle ? 70 : 84, avD = pillH - (subtle ? 16 : 22), pad = 12;
+      var nameFs = subtle ? 21 : 23;
       ctx.font = '800 ' + nameFs + 'px Montserrat, sans-serif'; ctx.textBaseline = 'alphabetic';
       var nameW = Math.max(ctx.measureText('ISAIAH').width, ctx.measureText('JEREMIAH').width);
       var pillW = pad + avD + 12 + nameW + pad + 4;
-      var x0 = M, y0 = cine ? M : (H - M - pillH); // cinematic badge top-left, blocks bottom-left
+      var x0 = M, y0 = (corner === 'tl') ? M : (H - M - pillH);
       roundRectPath(ctx, x0, y0, pillW, pillH, 16);
-      ctx.fillStyle = cine ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.72)'; ctx.fill();
+      ctx.fillStyle = subtle ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.72)'; ctx.fill();
       if (avatarReady) {
         var ax = x0 + pad, ay = y0 + (pillH - avD) / 2;
         ctx.save();
         ctx.beginPath(); ctx.arc(ax + avD / 2, ay + avD / 2, avD / 2, 0, Math.PI * 2); ctx.clip();
         ctx.drawImage(badgeAvatar, ax, ay, avD, avD);
         ctx.restore();
-        if (cine) {
+        if (subtle) {
           ctx.beginPath(); ctx.arc(ax + avD / 2, ay + avD / 2, avD / 2, 0, Math.PI * 2);
           ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
         }
@@ -1006,6 +1007,62 @@
       var tx = x0 + pad + avD + 12;
       ctx.fillText('ISAIAH', tx, y0 + pillH / 2 - 3);
       ctx.fillText('JEREMIAH', tx, y0 + pillH / 2 + nameFs - 1);
+    }
+
+    // SPOTLIGHT style: radial vignette (bright center, dark edges) + big text
+    // with a soft glow so it reads anywhere. Text centered by default.
+    function drawSpotlight(ctx, W, H) {
+      var g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.22, W / 2, H / 2, Math.max(W, H) * 0.72);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.62, 'rgba(0,0,0,0.32)');
+      g.addColorStop(1, 'rgba(0,0,0,0.84)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    function drawOverlaySpotlight(ctx, W, H) {
+      if (!overlayLines.length) return;
+      var opts = { W: W, H: H, targetW: W * 0.72 * textScale, maxFont: 188 * textScale, minFont: 34 * textScale, padX: 0, padY: 4, lineGap: 6, margin: 56, anchor: thumbPos };
+      var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 16;
+      ctx.textBaseline = 'alphabetic';
+      for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        ctx.font = '800 ' + b.fs + 'px Montserrat, sans-serif';
+        var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
+        for (var k = 0; k < b.line.length; k++) {
+          ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
+          ctx.fillText(b.line[k].t, cx, baseline);
+          cx += ctx.measureText(b.line[k].t).width + spaceW;
+        }
+      }
+      ctx.restore();
+    }
+
+    // SIDEBAR style: a dark panel down the left that fades into the image, with
+    // the text stacked inside it. Text left-aligned, vertically centered.
+    function drawSidebarPanel(ctx, W, H) {
+      var fadeEnd = W * 0.54;
+      var g = ctx.createLinearGradient(0, 0, fadeEnd, 0);
+      g.addColorStop(0, 'rgba(10,10,13,0.95)');
+      g.addColorStop(0.74, 'rgba(10,10,13,0.93)');
+      g.addColorStop(1, 'rgba(10,10,13,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, fadeEnd, H);
+    }
+    function drawOverlaySidebar(ctx, W, H) {
+      if (!overlayLines.length) return;
+      var opts = { W: W, H: H, targetW: W * 0.30 * textScale, maxFont: 92 * textScale, minFont: 24 * textScale, padX: 0, padY: 6, lineGap: 8, margin: 54, anchor: thumbPos };
+      var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
+      ctx.textBaseline = 'alphabetic';
+      for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        ctx.font = '800 ' + b.fs + 'px Montserrat, sans-serif';
+        var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
+        for (var k = 0; k < b.line.length; k++) {
+          ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
+          ctx.fillText(b.line[k].t, cx, baseline);
+          cx += ctx.measureText(b.line[k].t).width + spaceW;
+        }
+      }
     }
 
     function drawThumb() {
@@ -1019,11 +1076,21 @@
         drawScrim(ctx, 1280, 720);
         drawOverlayClean(ctx, 1280, 720);
         drawBorder(ctx, 1280, 720, true);
-        drawBadge(ctx, 1280, 720, 'cinematic');
+        drawBadge(ctx, 1280, 720, 'tl', true);
+      } else if (thumbStyle === 'spotlight') {
+        drawSpotlight(ctx, 1280, 720);
+        drawOverlaySpotlight(ctx, 1280, 720);
+        drawBorder(ctx, 1280, 720, true);
+        drawBadge(ctx, 1280, 720, 'bl', true);
+      } else if (thumbStyle === 'sidebar') {
+        drawSidebarPanel(ctx, 1280, 720);
+        drawOverlaySidebar(ctx, 1280, 720);
+        drawBorder(ctx, 1280, 720, true);
+        drawBadge(ctx, 1280, 720, 'bl', true);
       } else {
         drawOverlayBlocks(ctx, 1280, 720);
         drawBorder(ctx, 1280, 720, false);
-        drawBadge(ctx, 1280, 720, 'blocks');
+        drawBadge(ctx, 1280, 720, 'bl', false);
       }
     }
 
@@ -1269,7 +1336,8 @@
           thumbStyle = btn.getAttribute('data-style');
           Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { b.classList.remove('sel'); });
           btn.classList.add('sel');
-          thumbPos = (thumbStyle === 'cinematic') ? 'bl' : 'tr'; // sensible default per style
+          var defPos = { cinematic: 'bl', spotlight: 'mc', sidebar: 'ml', blocks: 'tr' };
+          thumbPos = defPos[thumbStyle] || 'bl'; // sensible default per style
           buildPosGrid();
           drawThumb();
         });
