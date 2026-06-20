@@ -10,6 +10,7 @@
     "@aws-sdk/client-s3": "^3.1073.0",
     "@aws-sdk/s3-request-presigner": "^3.1073.0",
     "express": "^4.19.2",
+    "ffmpeg-static": "^5.2.0",
     "googleapis": "^144.0.0"
   }
 }

@@ -1,20 +1,26 @@
-// YouTube Uploader — Step 3: browser -> R2 (direct) -> background R2 -> YouTube,
-// plus AI metadata (title/description/chapters) generated from a transcript.
+// YouTube Uploader — Step 3 (v0.06): browser -> R2 (direct) -> background R2 ->
+// YouTube, plus AI metadata (title/description/chapters). Metadata can come from
+// an uploaded transcript, a logline, OR auto-transcription: ffmpeg pulls the audio
+// straight out of the R2 object and OpenAI Whisper turns it into a timed transcript.
 // Single-channel personal tool. Refresh token held in memory, seeded from
 // YT_REFRESH_TOKEN so authorization survives restarts once set.
 
 import express from "express";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { Transform } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import ffmpegStatic from "ffmpeg-static";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.05";
+const APP_VERSION = "0.06";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -26,6 +32,13 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const METADATA_MODEL = "claude-sonnet-4-6";
 const aiConfigured = Boolean(ANTHROPIC_API_KEY);
+
+// --- Transcription (OpenAI Whisper) ---
+// whisper-1 specifically: it returns timestamped SRT, which the metadata step
+// turns into chapters. The newer transcribe models don't return timestamps yet.
+// Needs ffmpeg (from ffmpeg-static) to extract audio from the video.
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const transcribeConfigured = Boolean(OPENAI_API_KEY && ffmpegStatic);
 
 const BASE_URL = (
   process.env.BASE_URL ||
@@ -65,6 +78,8 @@ let refreshToken = process.env.YT_REFRESH_TOKEN || null;
 // In-memory transfer jobs (single-user tool; master lives safely in R2, so a
 // lost job just means re-running the transfer — no re-upload).
 const jobs = new Map();
+// In-memory transcription jobs (same deal — master is in R2, so re-run is cheap).
+const transcribeJobs = new Map();
 
 function oauthClient() {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
@@ -128,6 +143,87 @@ async function transferToYouTube(jobId, key, title, description) {
   }
 }
 
+// Run the bundled ffmpeg with the given args; resolve on exit 0, else reject
+// with the tail of stderr so failures are legible.
+function runFfmpeg(args) {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegStatic) {
+      return reject(new Error("ffmpeg binary not available (ffmpeg-static failed to install)."));
+    }
+    const proc = spawn(ffmpegStatic, args);
+    let tail = "";
+    proc.stderr.on("data", (d) => {
+      tail += d.toString();
+      if (tail.length > 6000) tail = tail.slice(-6000);
+    });
+    proc.on("error", reject);
+    proc.on("close", (code) =>
+      code === 0 ? resolve() : reject(new Error("ffmpeg exited " + code + ": " + tail.slice(-400)))
+    );
+  });
+}
+
+// Background transcription: extract a tiny mono 16kHz audio track straight from
+// the R2 object (ffmpeg reads it over a signed URL via HTTP range, so the multi-GB
+// video never touches Render's disk — only the small audio does), then send that
+// to OpenAI Whisper. whisper-1 + response_format=srt yields timestamped output, so
+// the metadata step can build real chapters from it.
+async function runTranscription(jobId, key) {
+  const job = transcribeJobs.get(jobId);
+  const tmpAudio = path.join(os.tmpdir(), `yt-aud-${jobId}.mp3`);
+  try {
+    job.state = "preparing";
+    const url = await getSignedUrl(
+      s3,
+      new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }),
+      { expiresIn: 3600 }
+    );
+
+    job.state = "extracting";
+    await runFfmpeg([
+      "-hide_banner", "-loglevel", "error", "-y",
+      "-i", url,
+      "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-f", "mp3",
+      tmpAudio,
+    ]);
+
+    const stat = await fs.promises.stat(tmpAudio);
+    if (stat.size > 24 * 1024 * 1024) {
+      throw new Error(
+        `Extracted audio is ${(stat.size / 1048576).toFixed(1)}MB, over Whisper's 25MB limit — this film is too long for one-pass transcription (chunking is a future upgrade). Export an SRT from your editor and use that instead.`
+      );
+    }
+
+    job.state = "transcribing";
+    const audioBuf = await fs.promises.readFile(tmpAudio);
+    const form = new FormData();
+    form.append("file", new Blob([audioBuf], { type: "audio/mpeg" }), "audio.mp3");
+    form.append("model", "whisper-1");
+    form.append("response_format", "srt");
+
+    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: form,
+    });
+    if (!r.ok) {
+      const errText = await r.text();
+      throw new Error(`Whisper request failed (HTTP ${r.status}): ${errText.slice(0, 300)}`);
+    }
+    const transcript = (await r.text()).trim();
+    if (!transcript) throw new Error("Whisper returned an empty transcript (near-silent audio?).");
+
+    job.state = "done";
+    job.transcript = transcript;
+    job.chars = transcript.length;
+  } catch (err) {
+    job.state = "error";
+    job.error = err?.message || String(err);
+  } finally {
+    fs.promises.unlink(tmpAudio).catch(() => {});
+  }
+}
+
 const app = express();
 app.use(express.json());
 
@@ -141,6 +237,7 @@ app.get("/api/status", (req, res) => {
     authorized: Boolean(refreshToken),
     r2Configured,
     aiConfigured,
+    transcribeConfigured,
     redirectUri: REDIRECT_URI,
   });
 });
@@ -240,6 +337,26 @@ app.post("/api/transfer", (req, res) => {
 // Step C: the browser polls this for transfer progress + result.
 app.get("/api/transfer/:jobId", (req, res) => {
   const job = jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: "Unknown job." });
+  res.json(job);
+});
+
+// Step T1: kick off background transcription of an already-uploaded R2 object.
+app.post("/api/transcribe", (req, res) => {
+  if (!transcribeConfigured) return res.status(500).json({ error: "Transcription not configured (set OPENAI_API_KEY in Render)." });
+  if (!r2Configured) return res.status(500).json({ error: "R2 not configured." });
+  const { key } = req.body || {};
+  if (!key) return res.status(400).json({ error: "Missing key." });
+
+  const jobId = crypto.randomUUID();
+  transcribeJobs.set(jobId, { state: "preparing", createdAt: Date.now() });
+  runTranscription(jobId, key);
+  res.json({ jobId });
+});
+
+// Step T2: the browser polls this for transcription progress + the transcript.
+app.get("/api/transcribe/:jobId", (req, res) => {
+  const job = transcribeJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Unknown job." });
   res.json(job);
 });
@@ -359,4 +476,5 @@ app.listen(PORT, () => {
   console.log(`Redirect URI to register in Google Cloud: ${REDIRECT_URI}`);
   console.log(`R2 configured: ${r2Configured}`);
   console.log(`AI metadata configured: ${aiConfigured}`);
+  console.log(`Transcription configured: ${transcribeConfigured}`);
 });

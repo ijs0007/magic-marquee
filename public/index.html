@@ -42,6 +42,9 @@
       min-height:130px; resize:vertical; line-height:1.5;
     }
     .genstatus { font-size:13px; margin:10px 0 16px; }
+    .checkrow { display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--ink); font-weight:400; line-height:1.45; margin:0 0 16px; cursor:pointer; }
+    .checkrow input { width:auto; margin:2px 0 0; flex:none; cursor:pointer; }
+    .checkrow b { font-weight:600; }
     a.btn { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:11px 18px; border-radius:11px; font-weight:600; }
     .hint { font-size:13px; color:var(--muted); margin:10px 0 0; }
     .progress { display:none; margin-top:18px; }
@@ -65,7 +68,7 @@
 <body>
   <div class="wrap">
     <h1>YouTube Uploader</h1>
-    <p class="sub">Step 3 — auto-writes the title, description & chapters, then browser → R2 → YouTube.</p>
+    <p class="sub">Step 3 — upload, auto-transcribe, and auto-write the title, description & chapters.</p>
 
     <div class="card">
       <div class="status"><span id="dot" class="dot"></span><span id="statusText">Checking status…</span></div>
@@ -83,6 +86,11 @@
       <input type="file" id="transcript" accept=".srt,.vtt,.txt,text/plain">
       <p class="hint" style="margin:-8px 0 16px">SRT or VTT gives you auto-chapters. Plain TXT works too — you'll just get title + description, no chapters.</p>
 
+      <label class="checkrow" id="whisperRow" style="display:none">
+        <input type="checkbox" id="whisperChk" checked>
+        <span>No transcript? <b>Transcribe the audio with Whisper</b> after upload — it writes the title, description &amp; chapters for you, then pauses so you can review.</span>
+      </label>
+
       <label for="logline">Logline (optional)</label>
       <input type="text" id="logline" placeholder="One line about the film — used if it has little dialogue">
 
@@ -96,11 +104,17 @@
       <textarea id="description" placeholder="Description — chapter timestamps appear here when generated from a timed transcript."></textarea>
 
       <button id="uploadBtn" disabled>Upload</button>
+      <button id="sendBtn" style="display:none">Send to YouTube</button>
       <p class="hint" id="hint">Uploads straight to R2 (skips Render), then transfers to YouTube as a private video.</p>
 
       <div id="prog1" class="progress">
         <div class="pbar-label"><span>Uploading to R2</span><span id="p1pct">0%</span></div>
         <div class="pbar"><span id="p1bar"></span></div>
+      </div>
+
+      <div id="progT" class="progress">
+        <div class="pbar-label"><span id="pTlabel">Transcribing</span></div>
+        <div class="pbar indet" id="pTwrap"><span id="pTbar"></span></div>
       </div>
 
       <div id="prog2" class="progress">
@@ -111,7 +125,7 @@
       <div id="result" class="result"><div id="resultBody"></div></div>
     </div>
 
-    <div class="foot">v0.05 — step 3</div>
+    <div class="foot">v0.06 — step 3</div>
   </div>
 
   <script>
@@ -119,31 +133,42 @@
     const statusText = document.getElementById('statusText');
     const authBlock = document.getElementById('authBlock');
     const uploadBtn = document.getElementById('uploadBtn');
+    const sendBtn = document.getElementById('sendBtn');
     const fileInput = document.getElementById('video');
-    const prog1 = document.getElementById('prog1');
-    const prog2 = document.getElementById('prog2');
-    const p1bar = document.getElementById('p1bar');
-    const p1pct = document.getElementById('p1pct');
-    const p2bar = document.getElementById('p2bar');
-    const p2pct = document.getElementById('p2pct');
-    const p2wrap = document.getElementById('p2wrap');
-    const p2label = document.getElementById('p2label');
-    const result = document.getElementById('result');
-    const resultBody = document.getElementById('resultBody');
     const transcriptInput = document.getElementById('transcript');
     const loglineInput = document.getElementById('logline');
     const titleInput = document.getElementById('title');
     const descInput = document.getElementById('description');
     const genBtn = document.getElementById('genBtn');
     const genStatus = document.getElementById('genStatus');
-    let ready = false;
-    let aiReady = false;
+    const whisperRow = document.getElementById('whisperRow');
+    const whisperChk = document.getElementById('whisperChk');
+    const prog1 = document.getElementById('prog1');
+    const progT = document.getElementById('progT');
+    const prog2 = document.getElementById('prog2');
+    const p1bar = document.getElementById('p1bar');
+    const p1pct = document.getElementById('p1pct');
+    const pTlabel = document.getElementById('pTlabel');
+    const pTwrap = document.getElementById('pTwrap');
+    const pTbar = document.getElementById('pTbar');
+    const p2bar = document.getElementById('p2bar');
+    const p2pct = document.getElementById('p2pct');
+    const p2wrap = document.getElementById('p2wrap');
+    const p2label = document.getElementById('p2label');
+    const result = document.getElementById('result');
+    const resultBody = document.getElementById('resultBody');
+
+    let ready = false;            // YouTube + R2 ready (upload allowed)
+    let aiReady = false;          // Anthropic key set (Generate allowed)
+    let transcribeReady = false;  // OpenAI key + ffmpeg set (Whisper allowed)
     let transcriptText = '';
+    let pendingKey = null;        // R2 key awaiting "Send to YouTube" after review
 
     async function refreshStatus() {
       try {
         const s = await (await fetch('/api/status')).json();
         aiReady = Boolean(s.aiConfigured);
+        transcribeReady = Boolean(s.transcribeConfigured);
         if (!s.configured) {
           dot.className = 'dot warn';
           statusText.textContent = 'Missing YouTube credentials — set CLIENT_ID / CLIENT_SECRET in Render.';
@@ -163,6 +188,7 @@
         dot.className = 'dot warn';
         statusText.textContent = 'Could not reach server.';
       }
+      whisperRow.style.display = transcribeReady ? 'flex' : 'none';
       updateBtn();
       renderAiNote();
       updateGenBtn();
@@ -190,6 +216,8 @@
     transcriptInput.addEventListener('change', () => {
       const f = transcriptInput.files[0];
       if (!f) { transcriptText = ''; updateGenBtn(); return; }
+      // Brought your own transcript? No need to auto-transcribe.
+      if (whisperChk) whisperChk.checked = false;
       const reader = new FileReader();
       reader.onload = () => { transcriptText = reader.result || ''; updateGenBtn(); };
       reader.onerror = () => { transcriptText = ''; updateGenBtn(); };
@@ -198,6 +226,17 @@
 
     loglineInput.addEventListener('input', updateGenBtn);
 
+    function generateMetadata(transcript, logline) {
+      return fetch('/api/metadata', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: transcript,
+          logline: logline,
+          filename: (fileInput.files[0] && fileInput.files[0].name) || ''
+        })
+      }).then(r => r.json());
+    }
+
     genBtn.addEventListener('click', async () => {
       genBtn.disabled = true;
       const orig = genBtn.textContent;
@@ -205,19 +244,14 @@
       genStatus.dataset.touched = '1';
       genStatus.innerHTML = '<span style="color:var(--muted)">Reading your transcript and writing metadata…</span>';
       try {
-        const md = await (await fetch('/api/metadata', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            transcript: transcriptText,
-            logline: loglineInput.value || '',
-            filename: (fileInput.files[0] && fileInput.files[0].name) || ''
-          })
-        })).json();
+        const md = await generateMetadata(transcriptText, loglineInput.value || '');
         if (md.error) {
           genStatus.innerHTML = '<span class="err">' + md.error + '</span>';
         } else {
           titleInput.value = md.title || '';
           descInput.value = md.description || '';
+          // Wrote it manually — don't also auto-transcribe over it on upload.
+          if (whisperChk) whisperChk.checked = false;
           genStatus.innerHTML = '<span style="color:#34c759">Done — edit the title or description below before uploading.</span>';
         }
       } catch (e) {
@@ -226,13 +260,6 @@
       genBtn.textContent = orig;
       updateGenBtn();
     });
-
-    function fmtBytes(n) {
-      if (!n) return '';
-      const u = ['B','KB','MB','GB']; let i = 0;
-      while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
-      return n.toFixed(i ? 1 : 0) + ' ' + u[i];
-    }
 
     function putToR2(url, file, contentType) {
       return new Promise((resolve, reject) => {
@@ -250,6 +277,59 @@
         xhr.onerror = () => reject(new Error('Network error during R2 upload'));
         xhr.send(file);
       });
+    }
+
+    // browser -> R2, returns the object key
+    async function doR2Upload(file) {
+      const contentType = file.type || 'application/octet-stream';
+      prog1.classList.add('show');
+      p1bar.style.width = '0%'; p1pct.textContent = '0%';
+      const pres = await (await fetch('/api/presign', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType, size: file.size })
+      })).json();
+      if (!pres.url) throw new Error(pres.error || 'Could not get upload URL');
+      await putToR2(pres.url, file, contentType);
+      p1bar.style.width = '100%'; p1pct.textContent = '100%';
+      return pres.key;
+    }
+
+    function pollTranscribe(jobId) {
+      return new Promise((resolve) => {
+        const labels = { preparing: 'Preparing audio', extracting: 'Extracting audio', transcribing: 'Transcribing with Whisper' };
+        const tick = async () => {
+          try {
+            const job = await (await fetch('/api/transcribe/' + jobId)).json();
+            pTlabel.textContent = labels[job.state] || 'Transcribing';
+            if (job.state === 'done' || job.state === 'error') return resolve(job);
+          } catch (e) { /* keep polling */ }
+          setTimeout(tick, 1500);
+        };
+        tick();
+      });
+    }
+
+    // R2 object -> Whisper -> metadata; fills the fields, then pauses for review
+    async function runTranscribeFlow(key) {
+      progT.classList.add('show'); pTbar.style.width = ''; pTwrap.classList.add('indet'); pTlabel.textContent = 'Preparing audio';
+      const tr = await (await fetch('/api/transcribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      })).json();
+      if (!tr.jobId) throw new Error(tr.error || 'Could not start transcription');
+      const job = await pollTranscribe(tr.jobId);
+      if (job.state === 'error') throw new Error('Transcription failed: ' + (job.error || 'unknown'));
+
+      pTlabel.textContent = 'Writing title & description';
+      const md = await generateMetadata(job.transcript || '', loglineInput.value || '');
+      if (md.error) throw new Error(md.error);
+      titleInput.value = md.title || '';
+      descInput.value = md.description || '';
+
+      pTwrap.classList.remove('indet'); pTbar.style.width = '100%';
+      pTlabel.textContent = 'Done — review below';
+      genStatus.dataset.touched = '1';
+      genStatus.innerHTML = '<span style="color:#34c759">Transcribed and written. Edit the title or description, then Send to YouTube.</span>';
     }
 
     function pollTransfer(jobId) {
@@ -276,58 +356,75 @@
       });
     }
 
+    // R2 -> YouTube transfer + render the result card
+    async function startTransfer(key) {
+      prog2.classList.add('show'); p2wrap.classList.add('indet');
+      p2bar.style.width = ''; p2pct.textContent = '';
+      const tr = await (await fetch('/api/transfer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, title: titleInput.value || '', description: descInput.value || '' })
+      })).json();
+      if (!tr.jobId) throw new Error(tr.error || 'Could not start transfer');
+      const job = await pollTransfer(tr.jobId);
+      p2wrap.classList.remove('indet');
+      result.classList.add('show');
+      if (job.state === 'error') {
+        resultBody.innerHTML = '<p class="err">Transfer failed: ' + (job.error || 'unknown') + '</p>';
+      } else {
+        p2bar.style.width = '100%'; p2pct.textContent = '100%';
+        const priv = job.privacyStatus || 'unknown';
+        resultBody.innerHTML =
+          '<div class="row"><span>Video ID</span><b>' + job.videoId + '</b></div>' +
+          '<div class="row"><span>Privacy</span><span class="badge ' + (priv === 'private' ? 'private' : '') + '">' + priv + '</span></div>' +
+          '<div class="row"><span>Processing</span><b>' + (job.uploadStatus || '—') + '</b></div>' +
+          '<div class="row links"><span>Open in</span><span><a href="' + job.studioUrl + '" target="_blank">Studio</a> · <a href="' + job.watchUrl + '" target="_blank">Watch</a></span></div>';
+      }
+    }
+
     uploadBtn.addEventListener('click', async () => {
       if (!fileInput.files.length) return;
       const file = fileInput.files[0];
-      const contentType = file.type || 'application/octet-stream';
+      const useWhisper = transcribeReady && whisperChk && whisperChk.checked;
 
       uploadBtn.disabled = true;
+      sendBtn.style.display = 'none';
       result.classList.remove('show'); resultBody.innerHTML = '';
-      prog1.classList.add('show'); prog2.classList.remove('show');
-      p1bar.style.width = '0%'; p1pct.textContent = '0%';
+      progT.classList.remove('show'); prog2.classList.remove('show');
 
       try {
-        // A: presign
-        const pres = await (await fetch('/api/presign', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: file.name, contentType, size: file.size })
-        })).json();
-        if (!pres.url) throw new Error(pres.error || 'Could not get upload URL');
-
-        // B: browser -> R2
-        await putToR2(pres.url, file, contentType);
-        p1bar.style.width = '100%'; p1pct.textContent = '100%';
-
-        // C: start R2 -> YouTube transfer
-        prog2.classList.add('show'); p2wrap.classList.add('indet');
-        const tr = await (await fetch('/api/transfer', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: pres.key, title: titleInput.value || '', description: descInput.value || '' })
-        })).json();
-        if (!tr.jobId) throw new Error(tr.error || 'Could not start transfer');
-
-        // D: poll
-        const job = await pollTransfer(tr.jobId);
-        p2wrap.classList.remove('indet');
-        if (job.state === 'error') {
-          resultBody.innerHTML = '<p class="err">Transfer failed: ' + (job.error || 'unknown') + '</p>';
+        const key = await doR2Upload(file);
+        if (useWhisper) {
+          await runTranscribeFlow(key);
+          // Pause for review: hide Upload, reveal Send to YouTube.
+          pendingKey = key;
+          uploadBtn.style.display = 'none';
+          sendBtn.style.display = 'block';
+          sendBtn.disabled = false;
         } else {
-          p2bar.style.width = '100%'; p2pct.textContent = '100%';
-          const priv = job.privacyStatus || 'unknown';
-          resultBody.innerHTML =
-            '<div class="row"><span>Video ID</span><b>' + job.videoId + '</b></div>' +
-            '<div class="row"><span>Privacy</span><span class="badge ' + (priv === 'private' ? 'private' : '') + '">' + priv + '</span></div>' +
-            '<div class="row"><span>Processing</span><b>' + (job.uploadStatus || '—') + '</b></div>' +
-            '<div class="row links"><span>Open in</span><span><a href="' + job.studioUrl + '" target="_blank">Studio</a> · <a href="' + job.watchUrl + '" target="_blank">Watch</a></span></div>';
+          await startTransfer(key);
+          uploadBtn.disabled = false; updateBtn();
         }
       } catch (e) {
         result.classList.add('show');
         resultBody.innerHTML = '<p class="err">' + e.message + '</p>';
+        uploadBtn.style.display = 'block';
         uploadBtn.disabled = false; updateBtn();
-        return;
       }
-      result.classList.add('show');
-      uploadBtn.disabled = false; updateBtn();
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      if (!pendingKey) return;
+      sendBtn.disabled = true;
+      try {
+        await startTransfer(pendingKey);
+        sendBtn.style.display = 'none';
+        uploadBtn.style.display = 'block';
+        uploadBtn.disabled = false; updateBtn();
+      } catch (e) {
+        result.classList.add('show');
+        resultBody.innerHTML = '<p class="err">' + e.message + '</p>';
+        sendBtn.disabled = false; // allow retry
+      }
     });
 
     refreshStatus();
