@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.17";
+const APP_VERSION = "0.18";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -261,6 +261,41 @@ function applyTemplate(str, values) {
     i = b + 2;
   }
   return tidyText(out);
+}
+
+// Recover one string field from possibly-broken JSON (e.g. a reply cut off
+// mid-way). Scans for "key": "..." and reads the value, unescaping as it goes;
+// if the closing quote is missing (truncated), returns what was read. String
+// scanning only — no regex, clipboard-safe.
+function salvageField(raw, key) {
+  const marker = '"' + key + '"';
+  let i = raw.indexOf(marker);
+  if (i === -1) return "";
+  i = raw.indexOf(":", i + marker.length);
+  if (i === -1) return "";
+  i++;
+  while (i < raw.length && (raw[i] === " " || raw[i] === "\t" || raw[i] === "\n" || raw[i] === "\r")) i++;
+  if (raw[i] !== '"') return "";
+  i++;
+  let out = "";
+  while (i < raw.length) {
+    const ch = raw[i];
+    if (ch === "\\") {
+      const n = raw[i + 1];
+      if (n === "n") out += "\n";
+      else if (n === "t") out += "\t";
+      else if (n === '"') out += '"';
+      else if (n === "\\") out += "\\";
+      else if (n === "/") out += "/";
+      else out += n || "";
+      i += 2;
+      continue;
+    }
+    if (ch === '"') break;
+    out += ch;
+    i++;
+  }
+  return out.trim();
 }
 
 // Build final title + description from the AI's pieces and the saved template.
@@ -931,7 +966,7 @@ app.post("/api/metadata", async (req, res) => {
       },
       body: JSON.stringify({
         model: METADATA_MODEL,
-        max_tokens: 1500,
+        max_tokens: 4000,
         system,
         messages: [{ role: "user", content: userContent }],
       }),
@@ -962,7 +997,16 @@ app.post("/api/metadata", async (req, res) => {
     try {
       parsed = JSON.parse(jsonSlice);
     } catch {
-      return res.status(502).json({ error: "AI returned unparseable output.", raw: raw.slice(0, 500) });
+      // Parse failed (often a cut-off reply) — rescue the fields directly.
+      parsed = {
+        title: salvageField(raw, "title"),
+        synopsis: salvageField(raw, "synopsis"),
+        chapters: salvageField(raw, "chapters"),
+      };
+      if (!parsed.title && !parsed.synopsis) {
+        const note = (data.stop_reason === "max_tokens") ? " (the reply was cut off — please try again)" : "";
+        return res.status(502).json({ error: "AI returned unparseable output" + note + ".", raw: raw.slice(0, 500) });
+      }
     }
 
     const aiTitle = String(parsed.title || "").trim();
