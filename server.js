@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.32";
+const APP_VERSION = "0.33";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -1305,7 +1305,7 @@ app.post("/api/thumb/set", async (req, res) => {
 // (edits for the first two, generation for the last). Returns a base64 PNG.
 app.post("/api/thumb/enhance", async (req, res) => {
   if (!imageConfigured) return res.status(500).json({ error: "Image enhance not configured (set OPENAI_API_KEY in Render)." });
-  const { mode, imageBase64, prompt, title, synopsis } = req.body || {};
+  const { mode, imageBase64, maskBase64, prompt, title, synopsis } = req.body || {};
   const m = String(mode || "").trim();
   const userHint = String(prompt || "").slice(0, 600).trim();
   const ctx = [String(title || "").trim(), String(synopsis || "").trim()].filter(Boolean).join(" — ").slice(0, 600);
@@ -1317,6 +1317,8 @@ app.post("/api/thumb/enhance", async (req, res) => {
     instruction = "Replace ONLY the background behind the main subject with a dramatic, cinematic backdrop that fits the film" + (ctx ? " (" + ctx + ")" : "") + ". Keep the main subject / person exactly the same — same pose, face, identity, and placement. Make it look like a professional movie thumbnail. No added text, no logos, no watermarks." + (userHint ? " Background to use: " + userHint + "." : "");
   } else if (m === "genbg") {
     instruction = "Create a dramatic, cinematic background image for a YouTube thumbnail" + (ctx ? " for this film: " + ctx : "") + ". Rich lighting and depth, strong visual impact, no people, no text, no logos, no watermarks." + (userHint ? " Specifics: " + userHint + "." : "");
+  } else if (m === "extendbg") {
+    instruction = "Extend the scene outward to fill the empty edges around the subject with a seamless, photorealistic continuation of the existing image" + (ctx ? " for this film (" + ctx + ")" : "") + ". Keep every existing (non-masked) pixel EXACTLY the same — same subject, faces, identity, colors, and placement. Only paint the masked empty edges. No added text, no logos, no watermarks." + (userHint ? " Background style: " + userHint + "." : "");
   } else {
     return res.status(400).json({ error: "Unknown enhance mode." });
   }
@@ -1333,9 +1335,15 @@ app.post("/api/thumb/enhance", async (req, res) => {
       if (!imageBase64) return res.status(400).json({ error: "Missing image to enhance." });
       const b64 = imageBase64.indexOf(",") !== -1 ? imageBase64.slice(imageBase64.indexOf(",") + 1) : imageBase64;
       const buf = Buffer.from(b64, "base64");
+      const isExtend = (m === "extendbg");
       const form = new FormData();
       form.append("model", IMAGE_MODEL);
       form.append("image[]", new Blob([buf], { type: "image/jpeg" }), "frame.jpg");
+      if (isExtend) {
+        if (!maskBase64) return res.status(400).json({ error: "Missing mask for extend." });
+        const mb64 = maskBase64.indexOf(",") !== -1 ? maskBase64.slice(maskBase64.indexOf(",") + 1) : maskBase64;
+        form.append("mask", new Blob([Buffer.from(mb64, "base64")], { type: "image/png" }), "mask.png");
+      }
       form.append("prompt", instruction);
       form.append("size", IMAGE_SIZE);
       form.append("quality", IMAGE_QUALITY);

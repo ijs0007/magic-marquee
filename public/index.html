@@ -323,11 +323,12 @@
       <button id="enhanceBtn" class="secondary" type="button" style="display:none; margin-bottom:12px">✨ Enhance with AI</button>
       <div id="enhancePanel" class="enhancepanel" style="display:none">
         <div class="lblq" style="margin-bottom:8px"><label>AI image options</label><button type="button" class="tipbtn" data-tip="tipEnhance" aria-label="What do these do?" aria-expanded="false">?</button></div>
-        <div id="tipEnhance" class="tip" style="margin-top:0"><p><b>Touch up shot</b> — polishes the frame you already have: cleans it up and improves the look while keeping the same shot.</p><p><b>Replace background</b> — keeps your subject and swaps what's behind them. Describe the new background in the box.</p><p><b>Generate background</b> — makes a brand-new background from your description (no frame needed).</p><p>Write the look you want in plain words — colors, lighting, mood. Don't name brands, movies, shows, or characters; OpenAI blocks those.</p></div>
+        <div id="tipEnhance" class="tip" style="margin-top:0"><p><b>Touch up shot</b> — polishes the frame you already have: cleans it up and improves the look while keeping the same shot.</p><p><b>Replace background</b> — keeps your subject and swaps what's behind them. Describe the new background in the box.</p><p><b>Generate background</b> — makes a brand-new background from your description (no frame needed).</p><p><b>Extend background</b> — fills the empty side bars (from a portrait or a reframed shot) with AI, keeping your subject and framing exactly as-is.</p><p>Write the look you want in plain words — colors, lighting, mood. Don't name brands, movies, shows, or characters; OpenAI blocks those.</p></div>
         <div class="enhrow">
           <button type="button" class="enhopt" data-mode="touchup">Touch up shot</button>
           <button type="button" class="enhopt" data-mode="replacebg">Replace background</button>
           <button type="button" class="enhopt" data-mode="genbg">Generate background</button>
+          <button type="button" class="enhopt" data-mode="extendbg">Extend background</button>
         </div>
         <input type="text" id="enhancePrompt" placeholder="Optional: describe the look or background">
         <p class="hint" id="enhanceCost" style="margin:0 0 4px">Uses your OpenAI key · a few cents per image · ~15–45s.</p>
@@ -384,7 +385,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Premiere · v0.44</div>
+    <div class="foot">Magic Premiere · v0.45</div>
   </div>
 
   <script>
@@ -1721,7 +1722,77 @@
     function setEnhBusy(on) {
       Array.prototype.forEach.call(document.querySelectorAll('.enhopt'), function (b) { b.disabled = on; });
     }
+    // ---- Extend background: fill empty edges with AI, keep your exact framing ----
+    // Composes the frame at the model's 3:2 size with the empty edges masked for
+    // fill, then crops the center 16:9 back out, so the subject lands exactly where
+    // you placed it and the bars are gone — no re-framing needed.
+    function buildExtendInputs() {
+      if (!thumbFrameImg || !thumbFrameImg.naturalWidth) return null;
+      var W = 1280, H = 720, MW = 1536, MH = 1024;
+      var BH = Math.round(MW * H / W), BY = Math.round((MH - BH) / 2), k = MW / W;
+      var img = thumbFrameImg;
+      var ir = img.width / img.height, baseH = H, baseW = H * ir;
+      var dw = baseW * bgScale, dh = baseH * bgScale;
+      var cx = (W - dw) / 2, cy = (H - dh) / 2;
+      var dx = (dw >= W) ? Math.min(0, Math.max(W - dw, cx + bgOffsetX)) : Math.max(0, Math.min(W - dw, cx + bgOffsetX));
+      var dy = (dh >= H) ? Math.min(0, Math.max(H - dh, cy + bgOffsetY)) : Math.max(0, Math.min(H - dh, cy + bgOffsetY));
+      var coversX = dx <= 0.5 && dx + dw >= W - 0.5;
+      var coversY = dy <= 0.5 && dy + dh >= H - 0.5;
+      if (coversX && coversY) return { full: true };
+      var rx = dx * k, ry = BY + dy * k, rw = dw * k, rh = dh * k;
+      var ic = document.createElement('canvas'); ic.width = MW; ic.height = MH;
+      var ictx = ic.getContext('2d');
+      ictx.fillStyle = '#000'; ictx.fillRect(0, 0, MW, MH);
+      ictx.drawImage(img, rx, ry, rw, rh);
+      var mc = document.createElement('canvas'); mc.width = MW; mc.height = MH;
+      var mctx = mc.getContext('2d');
+      mctx.clearRect(0, 0, MW, MH);
+      mctx.fillStyle = '#ffffff'; mctx.fillRect(rx, ry, rw, rh);
+      return { image: ic.toDataURL('image/jpeg', 0.92), mask: mc.toDataURL('image/png') };
+    }
+    function runExtend() {
+      var es = document.getElementById('enhanceStatus');
+      var inp = buildExtendInputs();
+      if (!inp) { es.innerHTML = '<span class="err">Pick a frame first.</span>'; return; }
+      if (inp.full) { es.innerHTML = '<span style="color:#ff9f0a">This frame already fills the thumbnail — nothing to extend. Zoom out first to expose the edges.</span>'; return; }
+      es.innerHTML = '<span style="color:var(--text-soft)">Extending the background… 15–45 seconds.</span>';
+      setEnhBusy(true); busy('Extending…', null);
+      fetch('/api/thumb/enhance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'extendbg', imageBase64: inp.image, maskBase64: inp.mask,
+          prompt: document.getElementById('enhancePrompt').value || '',
+          title: titleInput.value || '', synopsis: lastSynopsis || descInput.value || ''
+        })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res.error) { es.innerHTML = '<span class="err">' + res.error + '</span>'; return; }
+        if (!res.image) { es.innerHTML = '<span class="err">No image came back — try again.</span>'; return; }
+        var out = new Image();
+        out.onload = function () {
+          var MW = 1536, MH = 1024, BH = Math.round(MW * 720 / 1280), BY = Math.round((MH - BH) / 2);
+          var fc = document.createElement('canvas'); fc.width = 1280; fc.height = 720;
+          fc.getContext('2d').drawImage(out, 0, BY, MW, BH, 0, 0, 1280, 720);
+          var framedSrc = fc.toDataURL('image/png');
+          var framed = new Image();
+          framed.onload = function () {
+            thumbFrameImg = framed;
+            bgScale = 1; bgOffsetX = 0; bgOffsetY = 0;
+            var zv = document.getElementById('zoomVal'); if (zv) zv.textContent = '1.0\u00d7';
+            rebuildGrade(true); drawThumb();
+            var strip = document.getElementById('frameStrip');
+            var im = document.createElement('img'); im.src = framedSrc;
+            im.addEventListener('click', function () { applyFrame(framedSrc, im); });
+            strip.insertBefore(im, strip.firstChild);
+            es.innerHTML = '<span style="color:#34c759">Done — edges filled, your framing kept. Not feeling it? Tap any other frame to go back.</span>';
+          };
+          framed.src = framedSrc;
+        };
+        out.src = res.image;
+      }).catch(function (e) { es.innerHTML = '<span class="err">' + e.message + '</span>'; })
+        .then(function () { setEnhBusy(false); busyDone(); });
+    }
     function runEnhance(mode) {
+      if (mode === 'extendbg') { runExtend(); return; }
       var es = document.getElementById('enhanceStatus');
       var needImg = (mode !== 'genbg');
       var img64 = needImg ? currentFrameJpeg() : null;
