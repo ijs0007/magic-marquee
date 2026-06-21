@@ -99,6 +99,10 @@
     @keyframes topbusyspin { to { transform:rotate(360deg); } }
     .topbusy #topBusyLabel { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .topbusy-pct { color:var(--accent); font-variant-numeric:tabular-nums; }
+    .lightbox { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.88); z-index:100; padding:20px; cursor:zoom-out; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+    .lightbox.show { display:flex; }
+    .lightbox img { max-width:100%; max-height:100%; width:auto; height:auto; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+    .lightbox-x { position:fixed; top:12px; right:18px; color:#fff; font-size:30px; line-height:1; font-weight:300; opacity:.85; }
     .tabs { display:flex; gap:8px; margin-bottom:16px; }
     .tab { width:auto; flex:1; background:#26262e; color:var(--ink); font-weight:600; padding:10px 14px; border-radius:11px; }
     .tab.active { background:var(--accent); color:#fff; }
@@ -318,7 +322,8 @@
       </div>
     </div>
 
-    <div class="foot">v0.29 — step 3</div>
+    <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
+    <div class="foot">v0.30 — step 3</div>
   </div>
 
   <script>
@@ -1596,6 +1601,30 @@
       function end() { var was = dragging; dragging = false; if (was) scheduleGrade(true); }
       canvas.addEventListener('pointerup', end);
       canvas.addEventListener('pointercancel', end);
+    })();
+
+    // Tap (not drag) the preview to view it larger in a lightbox.
+    function openThumbLightbox() {
+      var c = document.getElementById('thumbCanvas');
+      if (!c) return;
+      try { document.getElementById('lightboxImg').src = c.toDataURL('image/jpeg', 0.95); }
+      catch (e) { return; }
+      document.getElementById('thumbLightbox').classList.add('show');
+    }
+    (function () {
+      var canvas = document.getElementById('thumbCanvas');
+      var dx0 = 0, dy0 = 0, down = false;
+      canvas.addEventListener('pointerdown', function (e) { down = true; dx0 = e.clientX; dy0 = e.clientY; });
+      canvas.addEventListener('pointerup', function (e) {
+        if (!down) return; down = false;
+        if (Math.abs(e.clientX - dx0) + Math.abs(e.clientY - dy0) <= 6) openThumbLightbox();
+      });
+      canvas.addEventListener('pointercancel', function () { down = false; });
+      var lb = document.getElementById('thumbLightbox');
+      if (lb) {
+        lb.addEventListener('click', function () { lb.classList.remove('show'); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') lb.classList.remove('show'); });
+      }
     })();
 
     function gradeReadout() {
