@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.31";
+const APP_VERSION = "0.32";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -445,6 +445,30 @@ const WHISPER_MAX_BYTES = 24 * 1024 * 1024;
 const CHUNK_SECONDS = 900; // 15 minutes per segment
 
 // Send one audio file to Whisper, return its SRT (timestamped) transcript.
+// Retry a transient/flaky step (dropped connection, timeout, 5xx, rate limit)
+// a few times with backoff. Genuine client errors (HTTP 4xx other than 429) are
+// NOT retried. This keeps a momentary blip during the R2 download or a Whisper
+// request from failing the whole transcription.
+function isRetryable(msg) {
+  const m = String(msg || "").toLowerCase();
+  if (m.indexOf("http 4") !== -1 && m.indexOf("http 429") === -1) return false; // real client error
+  return true; // connection drops, timeouts, aborts, 5xx, 429, etc.
+}
+async function withRetry(label, fn, attempts) {
+  attempts = attempts || 3;
+  let lastErr;
+  for (let i = 1; i <= attempts; i++) {
+    try { return await fn(); }
+    catch (e) {
+      lastErr = e;
+      if (!isRetryable(e && e.message) || i === attempts) throw e;
+      console.warn(`[transcribe] ${label} attempt ${i} failed (${(e && e.message) || e}); retrying...`);
+      await new Promise((r) => setTimeout(r, 800 * i));
+    }
+  }
+  throw lastErr;
+}
+
 // Reused by both the one-shot path and each chunk of the long-film path.
 async function whisperSrt(filePath) {
   const audioBuf = await fs.promises.readFile(filePath);
@@ -452,16 +476,23 @@ async function whisperSrt(filePath) {
   form.append("file", new Blob([audioBuf], { type: "audio/mpeg" }), "audio.mp3");
   form.append("model", "whisper-1");
   form.append("response_format", "srt");
-  const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-    body: form,
-  });
-  if (!r.ok) {
-    const errText = await r.text();
-    throw new Error(`Whisper request failed (HTTP ${r.status}): ${errText.slice(0, 300)}`);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 180000); // fail fast on a stalled request so withRetry can re-try
+  try {
+    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: form,
+      signal: ctrl.signal,
+    });
+    if (!r.ok) {
+      const errText = await r.text();
+      throw new Error(`Whisper request failed (HTTP ${r.status}): ${errText.slice(0, 300)}`);
+    }
+    return (await r.text()).trim();
+  } finally {
+    clearTimeout(timer);
   }
-  return (await r.text()).trim();
 }
 
 // --- SRT timestamp helpers (pure, string-based, no regex) ---
@@ -534,8 +565,10 @@ async function runTranscription(jobId, key) {
   const segDir = path.join(os.tmpdir(), `yt-seg-${jobId}`);
   try {
     job.state = "fetching";
-    const obj = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
-    await pipeline(obj.Body, fs.createWriteStream(tmpVideo));
+    await withRetry("R2 download", async () => {
+      const obj = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+      await pipeline(obj.Body, fs.createWriteStream(tmpVideo));
+    });
 
     job.state = "extracting";
     await runFfmpeg([
@@ -554,7 +587,7 @@ async function runTranscription(jobId, key) {
     if (stat.size <= WHISPER_MAX_BYTES) {
       // Short enough for one request — the original, proven path.
       job.state = "transcribing";
-      transcript = await whisperSrt(tmpAudio);
+      transcript = await withRetry("Whisper", () => whisperSrt(tmpAudio));
       if (!transcript) throw new Error("Whisper returned an empty transcript (near-silent audio?).");
     } else {
       // Too long for one request — split the audio into time segments, transcribe
@@ -603,7 +636,7 @@ async function runTranscription(jobId, key) {
         job.chunkIndex = k + 1;
         const name = dirFiles[k];
         const offsetSec = Number.isFinite(startByName[name]) ? startByName[name] : k * CHUNK_SECONDS;
-        const srt = await whisperSrt(path.join(segDir, name));
+        const srt = await withRetry("Whisper", () => whisperSrt(path.join(segDir, name)));
         const shifted = shiftSrt(srt, offsetSec, nextIndex);
         if (shifted.text) {
           pieces.push(shifted.text);
