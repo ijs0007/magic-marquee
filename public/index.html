@@ -169,6 +169,17 @@
     .enhopt { width:auto; background:var(--chip); color:var(--text); font-size:13px; font-weight:600; padding:10px 8px; border:1px solid var(--border); border-radius:9px; }
     .enhopt:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
     .enhancepanel input[type=text] { margin-bottom:0; }
+    .lblq { display:flex; align-items:center; gap:6px; margin:0 0 5px; }
+    .lblq label { margin:0; }
+    .tipbtn { width:18px; height:18px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-soft); font-size:11px; font-weight:700; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; padding:0; }
+    .tipbtn:hover, .tipbtn.on { border-color:var(--accent); color:var(--accent); }
+    .tip { display:none; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 12px; margin:-2px 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-soft); }
+    .tip.show { display:block; }
+    .tip b { color:var(--text); font-weight:600; }
+    .tip p { margin:0 0 6px; }
+    .tip p:last-child { margin:0; }
+    .btnrow { display:flex; align-items:center; gap:8px; }
+    .btnrow > button.secondary { flex:1 1 auto; width:auto; }
   
     /* ---- Magic Premiere brand + theme/accent controls (ported from MSM) ---- */
     .brand { display:flex; align-items:center; gap:9px; font-family:"Poppins","Segoe UI",-apple-system,sans-serif; font-weight:700; font-size:21px; letter-spacing:-.01em; }
@@ -226,11 +237,13 @@
             <button id="uploadBtn" disabled>Upload</button>
           </div>
 
-          <label for="transcript">Transcript (optional)</label>
+          <div class="lblq"><label for="transcript">Transcript (optional)</label><button type="button" class="tipbtn" data-tip="tipTranscript" aria-label="Help: Transcript" aria-expanded="false">?</button></div>
           <input type="file" id="transcript" accept=".srt,.vtt,.txt,text/plain">
+          <div id="tipTranscript" class="tip"><p>Optional. If you already have a transcript (.srt, .vtt, or .txt), drop it here and the app skips listening to your film.</p><p>Leave it empty and the app transcribes the dialogue for you automatically.</p></div>
 
-          <label for="logline">Logline (optional)</label>
+          <div class="lblq"><label for="logline">Logline (optional)</label><button type="button" class="tipbtn" data-tip="tipLogline" aria-label="Help: Logline" aria-expanded="false">?</button></div>
           <input type="text" id="logline" placeholder="One line about the film — used if it has little dialogue">
+          <div id="tipLogline" class="tip"><p>One sentence about your film. The app uses it to write your <b>title and description</b> when the film has little or no spoken dialogue.</p><p>If your film has plenty of dialogue, you can leave this blank — the transcript covers it.</p></div>
 
           <div id="msmRow" style="display:none">
             <label for="msmProject">Magic Story Maker project <span class="ctlval">— auto-fills cast &amp; crew</span></label>
@@ -238,7 +251,8 @@
             <p class="genstatus" id="msmStatus" style="margin-top:6px"></p>
           </div>
 
-          <button id="genBtn" class="secondary" disabled>✨ Generate title &amp; description</button>
+          <div class="btnrow"><button id="genBtn" class="secondary" disabled>✨ Generate title &amp; description</button><button type="button" class="tipbtn" data-tip="tipGen" aria-label="What is this?" aria-expanded="false">?</button></div>
+          <div id="tipGen" class="tip"><p>Optional. After you upload, the app writes your title, description, and chapters <b>automatically</b>.</p><p>Use this only if you want to see them now — generated from your transcript or logline — before the video finishes uploading.</p></div>
           <p class="genstatus" id="genStatus"></p>
         </div>
       </div>
@@ -305,13 +319,14 @@
 
       <button id="enhanceBtn" class="secondary" type="button" style="display:none; margin-bottom:12px">✨ Enhance with AI</button>
       <div id="enhancePanel" class="enhancepanel" style="display:none">
+        <div class="lblq" style="margin-bottom:8px"><label>AI image options</label><button type="button" class="tipbtn" data-tip="tipEnhance" aria-label="What do these do?" aria-expanded="false">?</button></div>
+        <div id="tipEnhance" class="tip" style="margin-top:0"><p><b>Touch up shot</b> — polishes the frame you already have: cleans it up and improves the look while keeping the same shot.</p><p><b>Replace background</b> — keeps your subject and swaps what's behind them. Describe the new background in the box.</p><p><b>Generate background</b> — makes a brand-new background from your description (no frame needed).</p><p>Write the look you want in plain words — colors, lighting, mood. Don't name brands, movies, shows, or characters; OpenAI blocks those.</p></div>
         <div class="enhrow">
           <button type="button" class="enhopt" data-mode="touchup">Touch up shot</button>
           <button type="button" class="enhopt" data-mode="replacebg">Replace background</button>
           <button type="button" class="enhopt" data-mode="genbg">Generate background</button>
         </div>
         <input type="text" id="enhancePrompt" placeholder="Optional: describe the look or background">
-        <p class="hint" style="margin:-8px 0 4px">Describe the look in plain words — colors, linework, lighting. Don't name brands, movies, shows, or characters; OpenAI blocks those.</p>
         <p class="hint" id="enhanceCost" style="margin:0 0 4px">Uses your OpenAI key · a few cents per image · ~15–45s.</p>
         <p class="genstatus" id="enhanceStatus" style="margin:6px 0 0"></p>
       </div>
@@ -366,7 +381,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Premiere · v0.38</div>
+    <div class="foot">Magic Premiere · v0.39</div>
   </div>
 
   <script>
@@ -903,6 +918,16 @@
     document.getElementById('helpBtn').addEventListener('click', function () {
       var p = document.getElementById('helpPanel');
       p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+    });
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.tipbtn');
+      if (!btn) return;
+      e.preventDefault(); e.stopPropagation();
+      var t = document.getElementById(btn.getAttribute('data-tip'));
+      if (!t) return;
+      var open = t.classList.toggle('show');
+      btn.classList.toggle('on', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
     function showStatus() {
       var s = document.getElementById('secStatus');
