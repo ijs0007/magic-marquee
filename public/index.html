@@ -28,6 +28,7 @@
     .dot.ok { background:#32d74b; }
     .dot.warn { background:#ff9f0a; }
     label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin:0 0 6px; }
+    .gradelbl { font-weight:500; font-size:12px; margin:6px 0 4px; opacity:.9; }
     input[type=text], input[type=file] {
       width:100%; font:inherit; color:var(--ink); padding:11px 12px; border:1px solid var(--line);
       border-radius:11px; background:#101014; margin-bottom:16px;
@@ -100,7 +101,7 @@
     #thumbCanvas:active { cursor:grabbing; }
     .ctlval { color:var(--muted); font-weight:600; font-size:13px; }
     input[type=range] { width:100%; margin:2px 0 16px; accent-color:var(--accent); }
-    .swatches { display:flex; gap:10px; margin-bottom:18px; }
+    .swatches { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
     .swatches button { width:30px; height:30px; border-radius:50%; padding:0; border:2px solid transparent; cursor:pointer; }
     .swatches button.sel { border-color:#fff; box-shadow:0 0 0 2px var(--bg); }
   </style>
@@ -204,6 +205,17 @@
       <input type="range" id="zoomRange" min="1" max="2.6" step="0.05" value="1">
       <button id="resetFrameBtn" class="secondary" style="margin:-4px 0 18px">Reset frame position</button>
 
+      <label>Image adjustments</label>
+      <label class="gradelbl">Saturation <span id="satVal" class="ctlval">100%</span></label>
+      <input type="range" id="satRange" min="0" max="2" step="0.05" value="1">
+      <label class="gradelbl">Contrast <span id="conVal" class="ctlval">100%</span></label>
+      <input type="range" id="conRange" min="0.5" max="1.8" step="0.05" value="1">
+      <label class="gradelbl">Brightness <span id="briVal" class="ctlval">100%</span></label>
+      <input type="range" id="briRange" min="0.5" max="1.5" step="0.05" value="1">
+      <label class="gradelbl">Sharpness <span id="shaVal" class="ctlval">0%</span></label>
+      <input type="range" id="shaRange" min="0" max="1" step="0.05" value="0">
+      <button id="resetGradeBtn" class="secondary" style="margin:2px 0 18px">Reset adjustments</button>
+
       <label for="overlayText">Overlay text — one line per row</label>
       <textarea id="overlayText" style="min-height:84px" placeholder="The punchy text on the thumbnail"></textarea>
 
@@ -239,7 +251,7 @@
       </div>
     </div>
 
-    <div class="foot">v0.21 — step 3</div>
+    <div class="foot">v0.22 — step 3</div>
   </div>
 
   <script>
@@ -306,6 +318,22 @@
     let bgOffsetY = 0;
     let textScale = 1;           // global text-size multiplier
     let accentColor = '#0eaaf5'; // highlight color for popped words
+    let grade = { sat: 1, contrast: 1, bright: 1, sharp: 0 }; // non-destructive image adjustments
+    let gradeReady = false;
+    let gradeCanvas = document.createElement('canvas'); gradeCanvas.width = 1280; gradeCanvas.height = 720;
+    let gradeRaf = null, gradePendingSharp = false;
+    // Coalesce rapid slider/drag events into one render per frame. Pass
+    // sharpen=false during a live drag (cheap), sharpen=true on release.
+    function scheduleGrade(sharpen) {
+      if (sharpen) gradePendingSharp = true;
+      if (gradeRaf) return;
+      gradeRaf = requestAnimationFrame(function () {
+        gradeRaf = null;
+        var s = gradePendingSharp; gradePendingSharp = false;
+        rebuildGrade(s);
+        drawThumb();
+      });
+    }
 
     async function refreshStatus() {
       try {
@@ -924,6 +952,43 @@
       ctx.drawImage(img, dx, dy, dw, dh);
     }
 
+    // Unsharp-style 3x3 sharpen on the offscreen graded image. Clamped edges.
+    function sharpenImageData(gctx, W, H, amount) {
+      if (amount <= 0) return;
+      var src = gctx.getImageData(0, 0, W, H), s = src.data;
+      var out = gctx.createImageData(W, H), d = out.data;
+      var c = 1 + 4 * amount, e = -amount;
+      for (var y = 0; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var i = (y * W + x) * 4;
+          var up = ((y > 0 ? y - 1 : 0) * W + x) * 4;
+          var dn = ((y < H - 1 ? y + 1 : H - 1) * W + x) * 4;
+          var lf = (y * W + (x > 0 ? x - 1 : 0)) * 4;
+          var rt = (y * W + (x < W - 1 ? x + 1 : W - 1)) * 4;
+          for (var ch = 0; ch < 3; ch++) {
+            var v = c * s[i + ch] + e * (s[up + ch] + s[dn + ch] + s[lf + ch] + s[rt + ch]);
+            d[i + ch] = v < 0 ? 0 : (v > 255 ? 255 : v);
+          }
+          d[i + 3] = s[i + 3];
+        }
+      }
+      gctx.putImageData(out, 0, 0);
+    }
+
+    // Build the graded background into an offscreen canvas, reusing the zoom/pan
+    // math in drawBackground. Only recomputed when a grade/zoom/pan control
+    // moves, so text edits stay snappy. Fully driven by `grade` — non-destructive.
+    function rebuildGrade(sharpen) {
+      if (!thumbFrameImg || !thumbFrameImg.complete || !thumbFrameImg.naturalWidth) { gradeReady = false; return; }
+      var gctx = gradeCanvas.getContext('2d');
+      gctx.clearRect(0, 0, 1280, 720);
+      gctx.filter = 'saturate(' + grade.sat + ') contrast(' + grade.contrast + ') brightness(' + grade.bright + ')';
+      drawBackground(gctx, thumbFrameImg, 1280, 720);
+      gctx.filter = 'none';
+      if (sharpen && grade.sharp > 0) sharpenImageData(gctx, 1280, 720, grade.sharp);
+      gradeReady = true;
+    }
+
     // BLOCKS style: each line on its own black rounded block, white/accent words.
     function drawOverlayBlocks(ctx, W, H) {
       if (!overlayLines.length) return;
@@ -1072,8 +1137,10 @@
       if (!c) return;
       var ctx = c.getContext('2d');
       ctx.clearRect(0, 0, 1280, 720);
-      if (thumbFrameImg && thumbFrameImg.complete && thumbFrameImg.naturalWidth) drawBackground(ctx, thumbFrameImg, 1280, 720);
-      else { ctx.fillStyle = '#0d0d10'; ctx.fillRect(0, 0, 1280, 720); }
+      if (thumbFrameImg && thumbFrameImg.complete && thumbFrameImg.naturalWidth) {
+        if (!gradeReady) rebuildGrade(true);
+        ctx.drawImage(gradeCanvas, 0, 0);
+      } else { ctx.fillStyle = '#0d0d10'; ctx.fillRect(0, 0, 1280, 720); }
       if (thumbStyle === 'cinematic') {
         drawScrim(ctx, 1280, 720);
         drawOverlayClean(ctx, 1280, 720);
@@ -1174,7 +1241,7 @@
       });
     }
 
-    var accentColors = ['#0eaaf5', '#ffd60a', '#ff453a', '#30d158', '#ff9f0a', '#ff2d92'];
+    var accentColors = ['#0eaaf5', '#00e5ff', '#30d158', '#a3e635', '#ffd60a', '#ff9f0a', '#ff6b35', '#ff453a', '#ff2d92', '#c084fc', '#7c4dff', '#14b8a6'];
     function buildAccentRow() {
       var row = document.getElementById('accentRow');
       row.innerHTML = '';
@@ -1201,6 +1268,7 @@
         bgScale = 1; bgOffsetX = 0; bgOffsetY = 0; // fresh frame starts at cover
         var zr = document.getElementById('zoomRange'); if (zr) zr.value = '1';
         var zv = document.getElementById('zoomVal'); if (zv) zv.textContent = '1.0\u00d7';
+        rebuildGrade(true);
         drawThumb();
       };
       img.src = src;
@@ -1305,9 +1373,9 @@
         var k = canvas.width / canvas.clientWidth;
         bgOffsetX = ox0 + (e.clientX - sx0) * k;
         bgOffsetY = oy0 + (e.clientY - sy0) * k;
-        drawThumb();
+        scheduleGrade(false);
       });
-      function end() { dragging = false; }
+      function end() { var was = dragging; dragging = false; if (was) scheduleGrade(true); }
       canvas.addEventListener('pointerup', end);
       canvas.addEventListener('pointercancel', end);
     })();
@@ -1315,14 +1383,15 @@
     document.getElementById('zoomRange').addEventListener('input', function (e) {
       bgScale = parseFloat(e.target.value);
       document.getElementById('zoomVal').textContent = bgScale.toFixed(1) + '\u00d7';
-      drawThumb();
+      scheduleGrade(false);
     });
+    document.getElementById('zoomRange').addEventListener('change', function () { scheduleGrade(true); });
 
     document.getElementById('resetFrameBtn').addEventListener('click', function () {
       bgScale = 1; bgOffsetX = 0; bgOffsetY = 0;
       document.getElementById('zoomRange').value = '1';
       document.getElementById('zoomVal').textContent = '1.0\u00d7';
-      drawThumb();
+      scheduleGrade(true);
     });
 
     document.getElementById('sizeRange').addEventListener('input', function (e) {
@@ -1330,6 +1399,28 @@
       document.getElementById('sizeVal').textContent = Math.round(textScale * 100) + '%';
       drawThumb();
     });
+
+    function gradeReadout() {
+      document.getElementById('satVal').textContent = Math.round(grade.sat * 100) + '%';
+      document.getElementById('conVal').textContent = Math.round(grade.contrast * 100) + '%';
+      document.getElementById('briVal').textContent = Math.round(grade.bright * 100) + '%';
+      document.getElementById('shaVal').textContent = Math.round(grade.sharp * 100) + '%';
+    }
+    (function () {
+      var sat = document.getElementById('satRange'), con = document.getElementById('conRange'),
+          bri = document.getElementById('briRange'), sha = document.getElementById('shaRange');
+      sat.addEventListener('input', function (e) { grade.sat = parseFloat(e.target.value); gradeReadout(); scheduleGrade(false); });
+      con.addEventListener('input', function (e) { grade.contrast = parseFloat(e.target.value); gradeReadout(); scheduleGrade(false); });
+      bri.addEventListener('input', function (e) { grade.bright = parseFloat(e.target.value); gradeReadout(); scheduleGrade(false); });
+      // Sharpness is the expensive one — show it live but rAF-throttled.
+      sha.addEventListener('input', function (e) { grade.sharp = parseFloat(e.target.value); gradeReadout(); scheduleGrade(true); });
+      [sat, con, bri, sha].forEach(function (el) { el.addEventListener('change', function () { scheduleGrade(true); }); });
+      document.getElementById('resetGradeBtn').addEventListener('click', function () {
+        grade = { sat: 1, contrast: 1, bright: 1, sharp: 0 };
+        sat.value = '1'; con.value = '1'; bri.value = '1'; sha.value = '0';
+        gradeReadout(); scheduleGrade(true);
+      });
+    })();
 
     (function () {
       var seg = document.getElementById('styleToggle');
