@@ -108,6 +108,8 @@
     .ghostbtn:hover:not(:disabled) { border-color:var(--accent); }
     .ghostbtn:disabled { opacity:.5; cursor:default; }
     .titleview { font-size:14px; color:var(--ink); font-weight:600; line-height:1.35; word-break:break-word; flex:1; }
+    .framespin { display:inline-flex; align-items:center; gap:9px; height:62px; padding:0 4px; color:var(--muted); font-size:13px; }
+    .framespin .sp { width:18px; height:18px; flex:none; border-radius:50%; border:2px solid rgba(255,255,255,.22); border-top-color:var(--accent); animation:topbusyspin .7s linear infinite; }
     .tabs { display:flex; gap:8px; margin-bottom:16px; }
     .tab { width:auto; flex:1; background:#26262e; color:var(--ink); font-weight:600; padding:10px 14px; border-radius:11px; }
     .tab.active { background:var(--accent); color:#fff; }
@@ -332,7 +334,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">v0.31 — step 3</div>
+    <div class="foot">v0.33 — step 3</div>
   </div>
 
   <script>
@@ -1329,7 +1331,7 @@
           gi++;
           return { t: t, b: b };
         }));
-        if (out.length >= 4) break;
+        if (out.length >= 5) break;
       }
       return out;
     }
@@ -1490,6 +1492,7 @@
         drawThumb();
       });
 
+      frameStripLoading();
       var framesP = fetch('/api/thumb/frames', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: lastUploadKey })
@@ -1498,6 +1501,7 @@
         return pollFrames(start.jobId);
       }).then(function (job) {
         if (job.state === 'error' || !job.frames || !job.frames.length) {
+          document.getElementById('frameStrip').innerHTML = '';
           thumbStatus.innerHTML = '<span style="color:#ff9f0a">Couldn\'t auto-grab frames (' + (job.error || 'none') + '). Upload your own still below.</span>';
           return;
         }
@@ -1801,6 +1805,10 @@
       var v = document.getElementById('thumbTitleView');
       if (v) v.textContent = (titleInput.value || '').trim() || '\u2014';
     }
+    function frameStripLoading(msg) {
+      var strip = document.getElementById('frameStrip');
+      if (strip) strip.innerHTML = '<div class="framespin"><span class="sp"></span>' + (msg || 'Grabbing frames...') + '</div>';
+    }
     function setFrameStrip(frames) {
       var strip = document.getElementById('frameStrip');
       strip.innerHTML = '';
@@ -1848,6 +1856,7 @@
     if (moreFramesBtn) moreFramesBtn.addEventListener('click', function () {
       if (!lastUploadKey) { thumbStatus.innerHTML = '<span style="color:#ff9f0a">No film loaded to pull frames from.</span>'; return; }
       moreFramesBtn.disabled = true; busy('Pulling new frames\u2026', null);
+      frameStripLoading('Grabbing new frames...');
       frameRound++;
       fetch('/api/thumb/frames', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1857,6 +1866,7 @@
         return pollFrames(start.jobId);
       }).then(function (job) {
         if (job.state === 'error' || !job.frames || !job.frames.length) {
+          document.getElementById('frameStrip').innerHTML = '';
           thumbStatus.innerHTML = '<span style="color:#ff9f0a">Couldn\'t grab more frames (' + (job.error || 'none') + ').</span>'; return;
         }
         setFrameStrip(job.frames);
