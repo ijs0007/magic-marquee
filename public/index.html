@@ -384,7 +384,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Premiere · v0.43</div>
+    <div class="foot">Magic Premiere · v0.44</div>
   </div>
 
   <script>
@@ -1192,8 +1192,9 @@
       gctx.putImageData(id, 0, 0);
     }
     function drawBackground(ctx, img, W, H) {
-      var ir = img.width / img.height, cr = W / H, baseW, baseH;
-      if (ir > cr) { baseH = H; baseW = H * ir; } else { baseW = W; baseH = W / ir; }
+      // Fit the frame to the canvas height: landscape/wide fills (crops the sides),
+      // a portrait shows in full with side bars you can zoom into or Extend-fill.
+      var ir = img.width / img.height, baseH = H, baseW = H * ir;
       var dw = baseW * bgScale, dh = baseH * bgScale;
       var covers = dw >= W - 0.5 && dh >= H - 0.5;
       if (!covers) {
@@ -1861,7 +1862,7 @@
 
     var pct = function (v) { return Math.round(v * 100) + '%'; };
     var liveGrade = function () { scheduleGrade(false); }, finalGrade = function () { scheduleGrade(true); };
-    makeDial('dZoom', { get: function () { return bgScale; }, set: function (v) { bgScale = v; }, min: 0.3, max: 2.6, step: 0.05, def: 1, fmt: function (v) { return v.toFixed(1) + '\u00d7'; }, onInput: liveGrade, onChange: finalGrade });
+    makeDial('dZoom', { get: function () { return bgScale; }, set: function (v) { bgScale = v; }, min: 0.3, max: 3.5, step: 0.05, def: 1, fmt: function (v) { return v.toFixed(1) + '\u00d7'; }, onInput: liveGrade, onChange: finalGrade });
     makeDial('dSat', { get: function () { return grade.sat; }, set: function (v) { grade.sat = v; }, min: 0, max: 2, step: 0.05, def: 1, fmt: pct, onInput: liveGrade, onChange: finalGrade });
     makeDial('dCon', { get: function () { return grade.contrast; }, set: function (v) { grade.contrast = v; }, min: 0.5, max: 1.8, step: 0.05, def: 1, fmt: pct, onInput: liveGrade, onChange: finalGrade });
     makeDial('dBri', { get: function () { return grade.bright; }, set: function (v) { grade.bright = v; }, min: 0.5, max: 1.5, step: 0.05, def: 1, fmt: pct, onInput: liveGrade, onChange: finalGrade });
