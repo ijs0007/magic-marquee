@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.25";
+const APP_VERSION = "0.26";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -61,6 +61,17 @@ const aiConfigured = Boolean(ANTHROPIC_API_KEY);
 // Needs ffmpeg (from ffmpeg-static) to extract audio from the video.
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const transcribeConfigured = Boolean(OPENAI_API_KEY && ffmpegStatic);
+
+// --- AI image enhance (OpenAI GPT Image) ---
+// gpt-image-1.5 is the current flagship and handles BOTH generate and edit.
+// Swap IMAGE_MODEL (e.g. "gpt-image-2", or "gpt-image-1-mini" for cheaper) in
+// Render without a code change. NOTE: GPT Image models require a one-time
+// OpenAI organization verification — the same key that does Whisper may still
+// need that before image calls work.
+const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-1.5";
+const IMAGE_QUALITY = process.env.IMAGE_QUALITY || "medium"; // low | medium | high
+const IMAGE_SIZE = "1536x1024"; // landscape, closest to a 16:9 thumbnail
+const imageConfigured = Boolean(OPENAI_API_KEY);
 // Magic Story Maker bridge: read crew/cast for a project from MSM's export door.
 const MSM_BASE_URL = (function () { let u = process.env.MSM_BASE_URL || ""; while (u.endsWith("/")) u = u.slice(0, -1); return u; })();
 const MSM_EXPORT_KEY = process.env.MSM_EXPORT_KEY || "";
@@ -702,6 +713,7 @@ app.get("/api/status", (req, res) => {
     r2Configured,
     aiConfigured,
     transcribeConfigured,
+    imageConfigured,
     dbConfigured,
     msmConfigured,
     redirectUri: REDIRECT_URI,
@@ -1251,6 +1263,70 @@ app.post("/api/thumb/set", async (req, res) => {
   }
 });
 
+// AI enhance for thumbnails — touch up the real shot, swap the background while
+// keeping the subject, or generate a fresh background. Uses OpenAI GPT Image
+// (edits for the first two, generation for the last). Returns a base64 PNG.
+app.post("/api/thumb/enhance", async (req, res) => {
+  if (!imageConfigured) return res.status(500).json({ error: "Image enhance not configured (set OPENAI_API_KEY in Render)." });
+  const { mode, imageBase64, prompt, title, synopsis } = req.body || {};
+  const m = String(mode || "").trim();
+  const userHint = String(prompt || "").slice(0, 600).trim();
+  const ctx = [String(title || "").trim(), String(synopsis || "").trim()].filter(Boolean).join(" — ").slice(0, 600);
+
+  let instruction;
+  if (m === "touchup") {
+    instruction = "Enhance this video still into a polished, eye-catching YouTube thumbnail background. Improve the lighting, color, contrast, and sharpness for a cinematic, high-impact look. Keep the composition, the subject, and any people's faces and identity EXACTLY the same — only improve quality. No added text, no logos, no watermarks." + (userHint ? " Direction: " + userHint + "." : "");
+  } else if (m === "replacebg") {
+    instruction = "Replace ONLY the background behind the main subject with a dramatic, cinematic backdrop that fits the film" + (ctx ? " (" + ctx + ")" : "") + ". Keep the main subject / person exactly the same — same pose, face, identity, and placement. Make it look like a professional movie thumbnail. No added text, no logos, no watermarks." + (userHint ? " Background to use: " + userHint + "." : "");
+  } else if (m === "genbg") {
+    instruction = "Create a dramatic, cinematic background image for a YouTube thumbnail" + (ctx ? " for this film: " + ctx : "") + ". Rich lighting and depth, strong visual impact, no people, no text, no logos, no watermarks." + (userHint ? " Specifics: " + userHint + "." : "");
+  } else {
+    return res.status(400).json({ error: "Unknown enhance mode." });
+  }
+
+  try {
+    let r;
+    if (m === "genbg") {
+      r = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({ model: IMAGE_MODEL, prompt: instruction, size: IMAGE_SIZE, quality: IMAGE_QUALITY, n: 1 }),
+      });
+    } else {
+      if (!imageBase64) return res.status(400).json({ error: "Missing image to enhance." });
+      const b64 = imageBase64.indexOf(",") !== -1 ? imageBase64.slice(imageBase64.indexOf(",") + 1) : imageBase64;
+      const buf = Buffer.from(b64, "base64");
+      const form = new FormData();
+      form.append("model", IMAGE_MODEL);
+      form.append("image[]", new Blob([buf], { type: "image/jpeg" }), "frame.jpg");
+      form.append("prompt", instruction);
+      form.append("size", IMAGE_SIZE);
+      form.append("quality", IMAGE_QUALITY);
+      form.append("input_fidelity", "high");
+      r = await fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: form,
+      });
+    }
+    if (!r.ok) {
+      const errText = await r.text();
+      let msg = errText.slice(0, 400);
+      try { const j = JSON.parse(errText); if (j && j.error && j.error.message) msg = j.error.message; } catch (_) { }
+      const hint = msg.toLowerCase().indexOf("verif") !== -1
+        ? " (Your OpenAI organization likely needs verification to use image models — platform.openai.com → Settings → Organization → General.)"
+        : "";
+      return res.status(502).json({ error: `Image request failed (HTTP ${r.status}): ${msg}${hint}` });
+    }
+    const data = await r.json();
+    const out = data && data.data && data.data[0] && data.data[0].b64_json;
+    if (!out) return res.status(502).json({ error: "Image model returned no image." });
+    res.json({ image: "data:image/png;base64," + out });
+  } catch (err) {
+    res.status(500).json({ error: err && err.message ? err.message : String(err) });
+  }
+});
+
 // Diagnostic: write a tiny object to R2 from the server (bypasses the browser
 // + CORS entirely). If this succeeds, keys + bucket + permissions are good and
 // any upload failure is browser/CORS-side. If it fails, the error names why.
@@ -1278,6 +1354,7 @@ app.listen(PORT, () => {
   console.log(`R2 configured: ${r2Configured}`);
   console.log(`AI metadata configured: ${aiConfigured}`);
   console.log(`Transcription configured: ${transcribeConfigured}`);
+  console.log(`Image enhance configured: ${imageConfigured} (model ${IMAGE_MODEL})`);
   console.log(`Database configured: ${dbConfigured}`);
   console.log(`MSM bridge configured: ${msmConfigured}`);
 });
