@@ -500,6 +500,21 @@
           <div class="tt-block"><span class="tt-label">Block opacity</span><div class="dial" id="dBlockOp" style="min-width:88px"><span class="dk">Opacity</span><span class="dv" id="blockOpVal">100%</span></div></div>
         </div>
       </div>
+      <div id="fxCustom" style="display:none">
+        <div class="texttools">
+          <div class="tt-block"><span class="tt-label">Text color</span><div id="fxTextSw" class="swatchpick"></div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:10px 0"><input type="checkbox" id="fxOutlineOn">Text outline</label>
+        <div class="texttools">
+          <div class="tt-block"><span class="tt-label">Outline width</span><div class="dial" id="dOutlineW" style="min-width:88px"><span class="dk">Width</span><span class="dv" id="outlineWVal">8</span></div></div>
+          <div class="tt-block"><span class="tt-label">Outline color</span><div id="fxOutlineSw" class="swatchpick"></div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:10px 0"><input type="checkbox" id="fxShadowTextOn" checked>Text shadow</label>
+        <div class="texttools">
+          <div class="tt-block"><span class="tt-label">Shadow strength</span><div class="dial" id="dTextShadowStr" style="min-width:88px"><span class="dk">Strength</span><span class="dv" id="textShadowStrVal">55%</span></div></div>
+          <div class="tt-block"><span class="tt-label">Shadow color</span><div id="fxTextShadowSw" class="swatchpick"></div></div>
+        </div>
+      </div>
 
       <button id="setThumbBtn" disabled>Set as YouTube thumbnail</button>
       <button id="downloadThumbBtn" class="secondary" style="margin-top:8px">Download thumbnail</button>
@@ -578,7 +593,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.58</div>
+    <div class="foot">Magic Marquee · v0.59</div>
   </div>
 
   <script>
@@ -655,6 +670,9 @@
     let bgOffsetY = 0;
     let textScale = 1;           // global text-size multiplier
     let freeText = false;        // false = fit each row to width; true = absolute per-word sizing
+    let customTextColor = '#ffffff';                       // custom: base color for non-popped words
+    let customOutline = { on: false, width: 8, color: '#000000' }; // custom: text outline
+    let customShadow = { on: true, color: '#000000', strength: 0.55 }; // custom: text drop shadow
     let accentColor = '#0eaaf5'; // highlight color for popped words
     let borderStyle = 'brand'; // frame border: brand | white | black | accent | none
     let grade = { sat: 1, contrast: 1, bright: 1, sharp: 0 }; // non-destructive image adjustments
@@ -1550,12 +1568,19 @@
         var baseline = b.y + opts.padY + b.asc;
         var cx = b.x + opts.padX;
         var spaceW = ctx.measureText(' ').width;
+        var isC = (thumbStyle === 'custom');
         for (var k = 0; k < b.line.length; k++) {
           var w = b.line[k];
           ctx.font = '800 ' + (b.fs * (w.s || 1)) + 'px Montserrat, sans-serif';
-          ctx.fillStyle = 'rgba(0,0,0,0.55)';
-          ctx.fillText(w.t, cx + Math.max(2, b.fs * 0.02), baseline + Math.max(3, b.fs * 0.03));
-          ctx.fillStyle = w.b ? accentColor : '#ffffff';
+          if (!isC || customShadow.on) {
+            ctx.fillStyle = isC ? hexToRgba(customShadow.color, customShadow.strength) : 'rgba(0,0,0,0.55)';
+            ctx.fillText(w.t, cx + Math.max(2, b.fs * 0.02), baseline + Math.max(3, b.fs * 0.03));
+          }
+          if (isC && customOutline.on && customOutline.width > 0) {
+            ctx.lineJoin = 'round'; ctx.lineWidth = customOutline.width; ctx.strokeStyle = customOutline.color;
+            ctx.strokeText(w.t, cx, baseline);
+          }
+          ctx.fillStyle = w.b ? accentColor : (isC ? customTextColor : '#ffffff');
           ctx.fillText(w.t, cx, baseline);
           cx += ctx.measureText(w.t).width + spaceW;
         }
@@ -2236,6 +2261,8 @@
     makeDial('dSize', { get: function () { return textScale; }, set: function (v) { textScale = v; }, min: 0.7, max: 1.4, step: 0.05, def: 1, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
     makeDial('dShadowStr', { get: function () { return (styleFx[thumbStyle] && styleFx[thumbStyle].strength != null) ? styleFx[thumbStyle].strength : 1; }, set: function (v) { if (styleFx[thumbStyle]) styleFx[thumbStyle].strength = v; }, min: 0, max: 1.5, step: 0.05, def: 1, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
     makeDial('dBlockOp', { get: function () { return styleFx.blocks.opacity; }, set: function (v) { styleFx.blocks.opacity = v; }, min: 0, max: 1, step: 0.05, def: 1, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+    makeDial('dOutlineW', { get: function () { return customOutline.width; }, set: function (v) { customOutline.width = v; }, min: 0, max: 24, step: 1, def: 8, fmt: function (v) { return Math.round(v); }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+    makeDial('dTextShadowStr', { get: function () { return customShadow.strength; }, set: function (v) { customShadow.strength = v; }, min: 0, max: 1, step: 0.05, def: 0.55, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
 
     // Unified reset for all image adjustments (zoom, pan, and grade).
     document.getElementById('resetGradeBtn').addEventListener('click', function () {
@@ -2281,8 +2308,11 @@
           last = now;
           if (taps >= 3) {
             taps = 0;
-            try { localStorage.setItem('mp_customunlock', '1'); } catch (e) {}
-            reveal();
+            var show = (btn.style.display === 'none');
+            btn.style.display = show ? '' : 'none';
+            if (show) { btn.classList.add('justunlocked'); setTimeout(function () { btn.classList.remove('justunlocked'); }, 600); }
+            else if (thumbStyle === 'custom') { var cin = document.querySelector('#styleToggle button[data-style="cinematic"]'); if (cin) cin.click(); }
+            try { localStorage.setItem('mp_customunlock', show ? '1' : '0'); } catch (e) {}
           }
         });
       }
@@ -2301,12 +2331,23 @@
       });
     })();
 
+    // Custom-room expert text controls (only visible when the Custom style is active).
+    (function () {
+      var to = document.getElementById('fxOutlineOn'), ts = document.getElementById('fxShadowTextOn');
+      if (document.getElementById('fxTextSw')) buildSwatchPick(document.getElementById('fxTextSw'), function () { return customTextColor; }, function (c) { customTextColor = c; drawThumb(); });
+      if (document.getElementById('fxOutlineSw')) buildSwatchPick(document.getElementById('fxOutlineSw'), function () { return customOutline.color; }, function (c) { customOutline.color = c; drawThumb(); });
+      if (document.getElementById('fxTextShadowSw')) buildSwatchPick(document.getElementById('fxTextShadowSw'), function () { return customShadow.color; }, function (c) { customShadow.color = c; drawThumb(); });
+      if (to) to.addEventListener('change', function () { customOutline.on = to.checked; drawThumb(); });
+      if (ts) ts.addEventListener('change', function () { customShadow.on = ts.checked; drawThumb(); });
+    })();
+
     function logoDefault() { return thumbStyle === 'cinematic' ? 'tl' : 'bl'; }
     function syncStyleFx() {
       var isBlocks = (thumbStyle === 'blocks');
-      var sb = document.getElementById('fxShadow'), bb = document.getElementById('fxBlocks');
+      var sb = document.getElementById('fxShadow'), bb = document.getElementById('fxBlocks'), cc = document.getElementById('fxCustom');
       if (sb) sb.style.display = isBlocks ? 'none' : '';
       if (bb) bb.style.display = isBlocks ? '' : 'none';
+      if (cc) cc.style.display = (thumbStyle === 'custom') ? '' : 'none';
       if (isBlocks) {
         var ov = document.getElementById('blockOpVal'); if (ov) ov.textContent = Math.round(styleFx.blocks.opacity * 100) + '%';
         buildSwatchPick(document.getElementById('fxBlockSw'), function () { return styleFx.blocks.color; }, function (col) { styleFx.blocks.color = col; drawThumb(); });
