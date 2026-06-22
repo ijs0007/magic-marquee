@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.34";
+const APP_VERSION = "0.35";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -682,7 +682,7 @@ function ffmpegProbeDuration(file) {
 }
 
 // Background: pull the master from R2, then grab evenly-spaced candidate frames
-// (each cropped to fill 1280x720) as base64 JPEGs for the thumbnail picker. One bad
+// (each fit within 1280x720, preserving aspect so portraits keep their shape) as base64 JPEGs. One bad
 // timestamp is skipped rather than failing the whole job.
 async function runFrameExtraction(jobId, key, round) {
   const job = thumbJobs.get(jobId);
@@ -716,7 +716,7 @@ async function runFrameExtraction(jobId, key, round) {
           "-ss", t.toFixed(2),
           "-i", tmpVideo,
           "-frames:v", "1",
-          "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720",
+          "-vf", "scale=1280:720:force_original_aspect_ratio=decrease",
           "-q:v", "3",
           out,
         ]);

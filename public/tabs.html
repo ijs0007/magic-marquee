@@ -539,7 +539,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.52</div>
+    <div class="foot">Magic Marquee · v0.53</div>
   </div>
 
   <script>
@@ -1399,20 +1399,8 @@
       var dx = Math.max(-dw / 2, Math.min(W - dw / 2, cx + bgOffsetX));
       var dy = Math.max(-dh / 2, Math.min(H - dh / 2, cy + bgOffsetY));
       bgOffsetX = dx - cx; bgOffsetY = dy - cy;
-      // Anything the frame doesn't cover (a portrait's bars, or a gap you opened
-      // by panning) gets a blurred, canvas-filling backdrop so it reads intentional.
-      var covers = dx <= 0.5 && dy <= 0.5 && dx + dw >= W - 0.5 && dy + dh >= H - 0.5;
-      if (!covers) {
-        var bf = 1.08, fw = baseW * bf, fh = baseH * bf;
-        if (CANVAS_FILTER_OK) {
-          var prevFilter = ctx.filter;
-          ctx.filter = 'blur(22px) brightness(0.62)';
-          ctx.drawImage(img, (W - fw) / 2, (H - fh) / 2, fw, fh);
-          ctx.filter = prevFilter;
-        } else {
-          ctx.drawImage(img, (W - fw) / 2, (H - fh) / 2, fw, fh);
-        }
-      }
+      // Uncovered area (a portrait's side bars, or a gap from panning) stays the
+      // canvas's solid black backing — a clean letterbox/pillarbox you can Extend-fill.
       ctx.drawImage(img, dx, dy, dw, dh);
     }
 
@@ -1615,6 +1603,7 @@
       if (!c) return;
       var ctx = c.getContext('2d');
       ctx.clearRect(0, 0, 1280, 720);
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1280, 720);
       if (thumbFrameImg && thumbFrameImg.complete && thumbFrameImg.naturalWidth) {
         if (!gradeReady) rebuildGrade(true);
         ctx.drawImage(gradeCanvas, 0, 0);
