@@ -287,6 +287,17 @@
     </div>
 
     <span id="busyLive" class="sr-only" aria-live="polite"></span>
+    <div id="topProg" aria-hidden="true"><div id="topProgBar"><div id="topProgFill"></div></div><div id="topProgMsg"></div></div>
+    <style>
+      #topProg{position:fixed;top:0;left:0;right:0;z-index:99999;pointer-events:none;opacity:0;transition:opacity .25s;text-align:center}
+      #topProg.on{opacity:1}
+      #topProgBar{height:3px;width:100%;background:rgba(255,255,255,0.10);overflow:hidden}
+      #topProgFill{height:100%;width:0;background:var(--accent);transition:width .3s ease}
+      #topProg.indet #topProgFill{width:38%;animation:topProgSlide 1.1s ease-in-out infinite}
+      @keyframes topProgSlide{0%{margin-left:-38%}100%{margin-left:100%}}
+      #topProgMsg{display:inline-block;margin-top:8px;padding:5px 13px;border-radius:999px;background:rgba(18,18,22,0.94);color:#fff;font-size:12.5px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,0.45)}
+      #topProgMsg:empty{display:none}
+    </style>
 
     <div id="publishView" class="panel">
       <div class="card" id="statusCard">
@@ -472,26 +483,31 @@
         <div class="tt-block">
           <span class="tt-label">Size</span>
           <div class="dial" id="dSize" style="min-width:60px"><span class="dk">Size</span><span class="dv" id="sizeVal">100%</span></div>
+          <span class="tt-label" style="margin-top:10px">Logo corner</span>
+          <div id="logoGrid" class="logogrid">
+            <button type="button" data-c="tl" aria-label="Top left">&#8598;</button>
+            <button type="button" data-c="tr" aria-label="Top right">&#8599;</button>
+            <button type="button" data-c="bl" aria-label="Bottom left">&#8601;</button>
+            <button type="button" data-c="br" aria-label="Bottom right">&#8600;</button>
+          </div>
         </div>
       </div>
 
       <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin:-4px 0 2px;cursor:pointer"><input type="checkbox" id="fitToggle" checked>Fit each row to width</label>
       <p class="hint" style="margin:0 0 14px">Off: each word keeps its own size — the row just gets wider.</p>
 
-      <label style="margin-top:2px">Logo corner</label>
-      <div id="logoGrid" class="logogrid">
-        <button type="button" data-c="tl" aria-label="Top left">&#8598;</button>
-        <button type="button" data-c="tr" aria-label="Top right">&#8599;</button>
-        <button type="button" data-c="bl" aria-label="Bottom left">&#8601;</button>
-        <button type="button" data-c="br" aria-label="Bottom right">&#8600;</button>
-      </div>
-
       <label style="margin-top:2px">Style settings</label>
       <div id="fxShadow">
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:10px"><input type="checkbox" id="fxShadowOn" checked>Shadow / vignette</label>
-        <div class="texttools">
-          <div class="tt-block"><span class="tt-label">Strength</span><div class="dial" id="dShadowStr" style="min-width:88px"><span class="dk">Strength</span><span class="dv" id="shadowStrVal">100%</span></div></div>
-          <div class="tt-block"><span class="tt-label">Shadow color</span><div id="fxShadowSw" class="swatchpick"></div></div>
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div class="tt-block" style="flex:1 1 200px;min-width:0">
+            <span class="tt-label">Shadow color</span>
+            <div id="fxShadowSw" class="swatchpick" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;justify-items:center"></div>
+          </div>
+          <div class="tt-block" style="flex:0 0 auto">
+            <span class="tt-label">Strength</span>
+            <div class="dial" id="dShadowStr" style="min-width:88px"><span class="dk">Strength</span><span class="dv" id="shadowStrVal">100%</span></div>
+          </div>
         </div>
       </div>
       <div id="fxBlocks" style="display:none">
@@ -508,6 +524,7 @@
         <div id="caseToggle" class="segmented" style="margin-bottom:4px">
           <button type="button" data-case="none" class="sel">As typed</button>
           <button type="button" data-case="upper">UPPERCASE</button>
+          <button type="button" data-case="lower">lowercase</button>
           <button type="button" data-case="title">Title</button>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:10px 0"><input type="checkbox" id="fxOutlineOn">Text outline</label>
@@ -611,7 +628,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.63</div>
+    <div class="foot">Magic Marquee · v0.64</div>
   </div>
 
   <script>
@@ -726,6 +743,14 @@
     function busyArc(el) { return el ? el.querySelector('.tabring-arc') : null; }
     function busy(label, pct) {
       if (busyLive && label != null) busyLive.textContent = label;
+      (function () {
+        var tp = document.getElementById('topProg'); if (!tp) return;
+        tp.classList.add('on');
+        var m = document.getElementById('topProgMsg'); if (m && label != null) m.textContent = label;
+        var f = document.getElementById('topProgFill');
+        if (pct == null || pct === '') { tp.classList.add('indet'); if (f) f.style.width = ''; }
+        else { tp.classList.remove('indet'); if (f) f.style.width = Math.max(0, Math.min(100, Number(pct))) + '%'; }
+      })();
       var el = busyTabs[busyTab]; if (!el) return;
       clearTimeout(busyDoneTimer); el.classList.remove('done');
       el.classList.add('working');
@@ -741,6 +766,13 @@
     }
     function busyDone() {
       if (busyLive) busyLive.textContent = '';
+      (function () {
+        var tp = document.getElementById('topProg'); if (!tp) return;
+        tp.classList.remove('indet');
+        var f = document.getElementById('topProgFill'); if (f) f.style.width = '100%';
+        var m = document.getElementById('topProgMsg');
+        setTimeout(function () { tp.classList.remove('on'); if (f) f.style.width = '0'; if (m) m.textContent = ''; }, 500);
+      })();
       var el = busyTabs[busyTab];
       if (el) {
         var arc = busyArc(el);
@@ -1577,6 +1609,7 @@
 
     function caseT(t) {
       if (customCase === 'upper') return t.toUpperCase();
+      if (customCase === 'lower') return t.toLowerCase();
       if (customCase === 'title') return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
       return t;
     }
