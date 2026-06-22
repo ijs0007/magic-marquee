@@ -215,6 +215,28 @@
     .texttools .swatches { grid-template-columns:repeat(4,30px); margin-bottom:0; }
     .texttools .posgrid { margin-bottom:0; }
     .texttools .dial { min-width:108px; }
+    /* ---- v0.51: row-style options, template drawers, 16:9 placeholder ---- */
+    .optcard { padding-top:16px; }
+    .optbanner { display:flex; align-items:center; gap:8px; background:var(--accent-soft); color:var(--accent); border-radius:10px; padding:10px 13px; font-size:13px; font-weight:600; line-height:1.4; margin-bottom:6px; }
+    .optrow { display:flex; align-items:center; gap:12px; padding:12px 2px; border-bottom:1px solid var(--border); }
+    .optrow:last-of-type { border-bottom:0; }
+    .optlabel { font-size:14px; font-weight:600; color:var(--text); flex:none; }
+    .optsel { flex:1 1 auto; min-width:0; margin:0; }
+    .optinput { flex:1 1 auto; min-width:0; margin:0; }
+    .optval { margin-left:auto; font-size:14px; font-weight:600; color:var(--accent); }
+    .optrow-tap { cursor:pointer; }
+    .optrow-tap:hover .optval { opacity:.75; }
+    .optsub { width:100%; font:inherit; color:var(--text); padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--field); margin:0 0 4px; display:none; }
+    .optfilebtn { width:auto; flex:none; margin-left:auto; background:var(--chip); color:var(--accent); border:1px solid var(--border); font-size:13px; font-weight:600; padding:7px 12px; border-radius:9px; }
+    .tpldrop { margin:-4px 0 14px; }
+    .tpldrop-head { display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--text-soft); padding:2px 0 8px; user-select:none; -webkit-user-select:none; }
+    .tpldrop-head .chev { font-size:10px; transition:transform .2s ease; }
+    .tpldrop.collapsed .chev { transform:rotate(-90deg); }
+    .tpldrop.collapsed .tpldrop-body { display:none; }
+    .ph169 { position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; background:#000; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+    .ph169-cap { color:var(--text-soft); font-size:13px; font-weight:600; }
+    .ph-hint { color:var(--text-soft); font-size:13px; line-height:1.5; text-align:center; margin:0; }
+    .ph-hint b { color:var(--text); font-weight:600; }
 </style>
 </head>
 <body>
@@ -236,7 +258,7 @@
     <div class="tabs">
       <button class="tab active" id="tabPublish">Publish</button>
       <button class="tab" id="tabThumbnail">Thumbnail</button>
-      <button class="tab" id="tabOptions">Options</button>
+      <button class="tab" id="tabOptions">Upload options</button>
     </div>
 
     <div id="topBusy" class="statusstrip" aria-live="polite"><span class="topbusy-spin"></span><span id="topBusyLabel">Ready</span><span id="topBusyPct" class="topbusy-pct"></span></div>
@@ -285,25 +307,29 @@
           <label for="title">Title</label>
           <input type="text" id="title" placeholder="My film">
 
+          <div class="tpldrop collapsed" id="tplTitleDrop">
+            <div class="tpldrop-head">Title template<span class="chev">&#9662;</span></div>
+            <div class="tpldrop-body">
+              <input type="text" id="tplTitle" placeholder="{{TITLE}} | Isaiah Jeremiah">
+            </div>
+          </div>
+
           <label for="description">Description</label>
           <textarea id="description" placeholder="Description — chapter timestamps appear here when generated from a timed transcript."></textarea>
+
+          <div class="tpldrop collapsed" id="tplDescDrop">
+            <div class="tpldrop-head">Description template<span class="chev">&#9662;</span></div>
+            <div class="tpldrop-body">
+              <textarea id="tplDesc" style="min-height:200px" placeholder="Your permanent description, with {{TOKEN}} slots where things change per video…"></textarea>
+              <p class="hint" id="tplLegend" style="margin:-6px 0 12px"></p>
+              <button id="tplSaveBtn" style="display:none">Save template</button>
+              <p class="genstatus" id="tplStatus"></p>
+            </div>
+          </div>
 
           <button id="sendBtn" style="display:none">Send to YouTube</button>
         </div>
       </div>
-
-        <div class="sec collapsed" id="secTemplate">
-          <div class="sechead">Title &amp; description templates<span class="chev">&#9662;</span></div>
-          <div class="secbody">
-            <label for="tplTitle">Title template</label>
-            <input type="text" id="tplTitle" placeholder="{{TITLE}} | Isaiah Jeremiah">
-            <label for="tplDesc">Description template</label>
-            <textarea id="tplDesc" style="min-height:200px" placeholder="Your permanent description, with {{TOKEN}} slots where things change per video…"></textarea>
-            <p class="hint" id="tplLegend" style="margin:-6px 0 16px"></p>
-            <button id="tplSaveBtn">Save template</button>
-            <p class="genstatus" id="tplStatus"></p>
-          </div>
-        </div>
 
         <div class="sec" id="secStatus" style="display:none">
         <div class="sechead">Status<span class="chev">&#9662;</span></div>
@@ -337,7 +363,7 @@
     </div>
 
     <div id="thumbnailView" class="panel" style="display:none">
-      <div id="thumbPlaceholder" class="card placeholder">Your thumbnail studio opens here once a film has uploaded and processed. Head to <b>Publish</b>, send a film, then tap <b>Make thumbnail</b>.</div>
+      <div id="thumbPlaceholder" class="card placeholder"><div class="ph169"><span class="ph169-cap">16:9 preview</span></div><p class="ph-hint">Head to <b>Publish</b>, send a film, then tap <b>Make thumbnail</b> — your studio opens here.</p></div>
       <div id="thumbCard" class="card" style="display:none">
       <label style="font-size:15px; color:var(--text); margin-bottom:12px">Thumbnail</label>
       <div id="styleToggle" class="segmented">
@@ -359,8 +385,11 @@
 
       <label>Frame from your film</label>
       <div id="frameStrip" class="framestrip"></div>
-      <button id="moreFramesBtn" class="secondary" type="button" style="margin:0 0 12px">↻ More frame choices</button>
-      <input type="file" id="frameUpload" accept="image/*">
+      <div style="display:flex; gap:8px; margin:0 0 12px">
+        <button id="moreFramesBtn" class="secondary" type="button" style="margin:0; flex:1">↻ More frames</button>
+        <button id="frameUploadBtn" class="secondary" type="button" style="margin:0; flex:1"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="vertical-align:-1px;margin-right:5px"><path d="M8 11V3M5 6l3-3 3 3M3 11v2h10v-2"/></svg>Upload still</button>
+      </div>
+      <input type="file" id="frameUpload" accept="image/*" style="display:none">
       <p class="hint" style="margin:-8px 0 14px">Pick an auto-grabbed frame, or upload your own still. <b>Drag the image to reposition it</b> &mdash; hold Shift/Ctrl to lock one axis, or nudge with the &#8596; &#8597; dials.</p>
 
       <button id="enhanceBtn" class="secondary" type="button" style="display:none; margin-bottom:12px">✨ Enhance with AI</button>
@@ -368,10 +397,10 @@
         <div class="lblq" style="margin-bottom:8px"><label>AI image options</label><button type="button" class="tipbtn" data-tip="tipEnhance" aria-label="What do these do?" aria-expanded="false">?</button></div>
         <div id="tipEnhance" class="tip" style="margin-top:0"><p><b>Touch up shot</b> — polishes the frame you already have: cleans it up and improves the look while keeping the same shot.</p><p><b>Replace background</b> — keeps your subject and swaps what's behind them. Describe the new background in the box.</p><p><b>Generate background</b> — makes a brand-new background from your description (no frame needed).</p><p><b>Extend background</b> — fills the empty side bars (from a portrait or a reframed shot) with AI, keeping your subject and framing exactly as-is.</p><p>Write the look you want in plain words — colors, lighting, mood. Don't name brands, movies, shows, or characters; OpenAI blocks those.</p></div>
         <div class="enhrow">
-          <button type="button" class="enhopt" data-mode="touchup">Touch up shot</button>
-          <button type="button" class="enhopt" data-mode="replacebg">Replace background</button>
-          <button type="button" class="enhopt" data-mode="genbg">Generate background</button>
-          <button type="button" class="enhopt" data-mode="extendbg">Extend background</button>
+          <button type="button" class="enhopt" data-mode="touchup">Touch up</button>
+          <button type="button" class="enhopt" data-mode="replacebg">Replace bg</button>
+          <button type="button" class="enhopt" data-mode="genbg">Generate bg</button>
+          <button type="button" class="enhopt" data-mode="extendbg">Extend bg</button>
         </div>
         <input type="text" id="enhancePrompt" placeholder="Optional: describe the look or background">
         <p class="hint" id="enhanceCost" style="margin:0 0 4px">Uses your OpenAI key · a few cents per image · ~15–45s.</p>
@@ -426,58 +455,78 @@
     </div>
 
     <div id="optionsView" class="panel" style="display:none">
-      <div class="card">
-        <label style="font-size:15px; color:var(--text); margin-bottom:6px">Upload defaults</label>
-        <p class="hint" style="margin:0 0 16px">Saved on this device and used as the defaults for your next upload.</p>
+      <div class="card optcard">
+        <div class="optbanner"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="flex:none"><path d="M4 2h8a1 1 0 0 1 1 1v11l-5-3-5 3V3a1 1 0 0 1 1-1z"/></svg><span>Saved defaults — only change when an upload needs something different.</span></div>
 
-        <label>Privacy</label>
-        <div id="optPrivacy" class="segmented">
-          <button type="button" data-v="public">Public</button>
-          <button type="button" data-v="unlisted">Unlisted</button>
-          <button type="button" data-v="private" class="sel">Private</button>
+        <div class="optrow">
+          <span class="optlabel">Privacy</span>
+          <select id="optPrivacy" class="optsel"><option value="public">Public</option><option value="unlisted">Unlisted</option><option value="private">Private</option></select>
         </div>
 
-        <label class="checkrow" style="margin-bottom:10px"><input type="checkbox" id="optScheduleOn"><span>Schedule publish for a specific time</span></label>
-        <input type="datetime-local" id="optScheduleAt" style="width:100%; font:inherit; color:var(--text); padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--field); margin-bottom:14px; display:none">
+        <div class="optrow optrow-tap" id="optScheduleRow" role="button" tabindex="0">
+          <span class="optlabel">Schedule publish</span>
+          <span class="optval" id="optScheduleVal">Off</span>
+        </div>
+        <input type="datetime-local" id="optScheduleAt" class="optsub">
 
-        <label for="optCategory">Category</label>
-        <select id="optCategory"><option value="1">Film &amp; Animation</option><option value="2">Autos &amp; Vehicles</option><option value="10">Music</option><option value="15">Pets &amp; Animals</option><option value="17">Sports</option><option value="19">Travel &amp; Events</option><option value="20">Gaming</option><option value="22">People &amp; Blogs</option><option value="23">Comedy</option><option value="24">Entertainment</option><option value="25">News &amp; Politics</option><option value="26">Howto &amp; Style</option><option value="27">Education</option><option value="28">Science &amp; Technology</option></select>
-
-        <label for="optTags" style="margin-top:8px">Tags <span class="ctlval">— comma separated</span></label>
-        <input type="text" id="optTags" placeholder="short film, drama, indie">
-
-        <label>Audience</label>
-        <div id="optKids" class="segmented">
-          <button type="button" data-v="no" class="sel">Not made for kids</button>
-          <button type="button" data-v="yes">Made for kids</button>
+        <div class="optrow">
+          <span class="optlabel">Category</span>
+          <select id="optCategory" class="optsel"><option value="1">Film &amp; Animation</option><option value="2">Autos &amp; Vehicles</option><option value="10">Music</option><option value="15">Pets &amp; Animals</option><option value="17">Sports</option><option value="19">Travel &amp; Events</option><option value="20">Gaming</option><option value="22">People &amp; Blogs</option><option value="23">Comedy</option><option value="24">Entertainment</option><option value="25">News &amp; Politics</option><option value="26">Howto &amp; Style</option><option value="27">Education</option><option value="28">Science &amp; Technology</option></select>
         </div>
 
-        <label>License</label>
-        <div id="optLicense" class="segmented">
-          <button type="button" data-v="youtube" class="sel">Standard</button>
-          <button type="button" data-v="creativeCommon">Creative Commons</button>
+        <div class="optrow">
+          <span class="optlabel">Tags</span>
+          <input type="text" id="optTags" class="optinput" placeholder="short film, drama…">
         </div>
 
-        <label for="optLang">Default language</label>
-        <select id="optLang"><option value="">— none —</option><option value="en">English</option><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="ja">Japanese</option></select>
+        <div class="optrow optrow-tap" id="optKidsRow" role="button" tabindex="0">
+          <span class="optlabel">Made for kids</span>
+          <span class="optval" id="optKidsVal">No</span>
+        </div>
 
-        <label for="optPlaylist" style="margin-top:8px">Add to playlist <span class="ctlval">— name or ID, optional</span></label>
-        <input type="text" id="optPlaylist" placeholder="e.g. Short Films">
+        <div class="optrow optrow-tap" id="optCommentsRow" role="button" tabindex="0">
+          <span class="optlabel">Comments</span>
+          <span class="optval" id="optCommentsVal">On</span>
+        </div>
 
-        <label class="checkrow" style="margin-bottom:10px"><input type="checkbox" id="optEmbeddable" checked><span>Allow embedding on other sites</span></label>
-        <label class="checkrow" style="margin-bottom:16px"><input type="checkbox" id="optNotify" checked><span>Notify subscribers when published</span></label>
+        <div class="optrow">
+          <span class="optlabel">License</span>
+          <select id="optLicense" class="optsel"><option value="youtube">Standard</option><option value="creativeCommon">Creative Commons</option></select>
+        </div>
 
-        <label for="optCaption">Caption file <span class="ctlval">— .srt or .vtt, optional</span></label>
-        <input type="file" id="optCaption" accept=".srt,.vtt">
+        <div class="optrow">
+          <span class="optlabel">Default language</span>
+          <select id="optLang" class="optsel"><option value="">— none —</option><option value="en">English</option><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="ja">Japanese</option></select>
+        </div>
 
-        <button id="optSaveBtn">Save defaults</button>
-        <p class="genstatus" id="optStatus"></p>
-        <p class="hint" style="margin-top:4px">Heads-up: these defaults save now, but films still upload as <b>private drafts</b> until the YouTube publishing fields are wired into the upload — that’s the next step.</p>
+        <div class="optrow optrow-tap" id="optNotifyRow" role="button" tabindex="0">
+          <span class="optlabel">Notify subscribers</span>
+          <span class="optval" id="optNotifyVal">Yes</span>
+        </div>
+
+        <div class="optrow">
+          <span class="optlabel">Add to playlist</span>
+          <input type="text" id="optPlaylist" class="optinput" placeholder="None">
+        </div>
+
+        <div class="optrow optrow-tap" id="optEmbedRow" role="button" tabindex="0">
+          <span class="optlabel">Allow embedding</span>
+          <span class="optval" id="optEmbedVal">On</span>
+        </div>
+
+        <div class="optrow optrow-file">
+          <span class="optlabel">Captions</span>
+          <button type="button" id="optCaptionBtn" class="optfilebtn">Upload .srt / .vtt</button>
+          <input type="file" id="optCaption" accept=".srt,.vtt" style="display:none">
+        </div>
+
+        <p class="genstatus" id="optStatus" style="margin:12px 0 0; min-height:18px"></p>
+        <p class="hint" style="margin:4px 0 0">These save now, but films still upload as <b>private drafts</b> until the YouTube publishing fields are wired into the upload.</p>
       </div>
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.50</div>
+    <div class="foot">Magic Marquee · v0.51</div>
   </div>
 
   <script>
@@ -2314,59 +2363,107 @@
       document.addEventListener("click",function(){ var pop=document.getElementById("accentPop"); if(pop&&!pop.hidden) pop.hidden=true; });
     })();
 
-    // ---- Upload options (saved defaults, stored on this device) ----
+    // ---- Upload options (saved defaults, stored on this device, auto-saved) ----
     function initUploadOptions() {
       var LS = 'mp_uploadopts';
-      var saved = {};
-      try { saved = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { saved = {}; }
-      function seg(id, val) {
-        var box = document.getElementById(id); if (!box) return;
-        var btns = box.querySelectorAll('button');
-        Array.prototype.forEach.call(btns, function (b) {
-          b.classList.toggle('sel', b.getAttribute('data-v') === val);
-          b.addEventListener('click', function () {
-            Array.prototype.forEach.call(btns, function (x) { x.classList.remove('sel'); });
-            b.classList.add('sel');
-          });
-        });
+      var d = {};
+      try { d = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { d = {}; }
+      function $id(id) { return document.getElementById(id); }
+      function setSel(id, v) { var el = $id(id); if (el && v != null) el.value = v; }
+      function gv(id, dflt) { var el = $id(id); return el ? el.value : (dflt || ''); }
+
+      var statusEl = $id('optStatus'), flashT = null;
+      function flashSaved() {
+        if (!statusEl) return;
+        statusEl.textContent = 'Saved';
+        statusEl.style.color = 'var(--good)';
+        clearTimeout(flashT);
+        flashT = setTimeout(function () { statusEl.textContent = ''; }, 1400);
       }
-      function segVal(id) { var el = document.querySelector('#' + id + ' button.sel'); return el ? el.getAttribute('data-v') : ''; }
-      function setVal(id, v) { var el = document.getElementById(id); if (el != null && v != null) el.value = v; }
-      function setChk(id, v) { var el = document.getElementById(id); if (el && typeof v === 'boolean') el.checked = v; }
-      function getVal(id) { var el = document.getElementById(id); return el ? el.value : ''; }
-      function getChk(id) { var el = document.getElementById(id); return !!(el && el.checked); }
 
-      seg('optPrivacy', saved.privacy || 'private');
-      seg('optKids', saved.kids || 'no');
-      seg('optLicense', saved.license || 'youtube');
-      setVal('optCategory', saved.category || '1');
-      setVal('optTags', saved.tags || '');
-      setVal('optLang', saved.lang || '');
-      setVal('optPlaylist', saved.playlist || '');
-      setChk('optEmbeddable', saved.embeddable !== false);
-      setChk('optNotify', saved.notify !== false);
-      setChk('optScheduleOn', !!saved.scheduleOn);
-      setVal('optScheduleAt', saved.scheduleAt || '');
-
-      var schedOn = document.getElementById('optScheduleOn');
-      var schedAt = document.getElementById('optScheduleAt');
-      function syncSched() { if (schedAt) schedAt.style.display = (schedOn && schedOn.checked) ? 'block' : 'none'; }
-      if (schedOn) schedOn.addEventListener('change', syncSched);
-      syncSched();
-
-      var saveBtn = document.getElementById('optSaveBtn');
-      var statusEl = document.getElementById('optStatus');
-      if (saveBtn) saveBtn.addEventListener('click', function () {
+      var getSchedule, getKids, getComments, getNotify, getEmbed;
+      function save() {
         var data = {
-          privacy: segVal('optPrivacy'), kids: segVal('optKids'), license: segVal('optLicense'),
-          category: getVal('optCategory'), tags: getVal('optTags'), lang: getVal('optLang'),
-          playlist: getVal('optPlaylist'), embeddable: getChk('optEmbeddable'), notify: getChk('optNotify'),
-          scheduleOn: getChk('optScheduleOn'), scheduleAt: getVal('optScheduleAt')
+          privacy: gv('optPrivacy', 'private'),
+          scheduleOn: getSchedule ? getSchedule() : false,
+          scheduleAt: gv('optScheduleAt', ''),
+          category: gv('optCategory', '1'),
+          tags: gv('optTags', ''),
+          kids: getKids ? getKids() : false,
+          comments: getComments ? getComments() : true,
+          license: gv('optLicense', 'youtube'),
+          lang: gv('optLang', ''),
+          notify: getNotify ? getNotify() : true,
+          embeddable: getEmbed ? getEmbed() : true,
+          playlist: gv('optPlaylist', '')
         };
         try { localStorage.setItem(LS, JSON.stringify(data)); } catch (e) {}
-        if (statusEl) { statusEl.textContent = 'Saved as your defaults on this device.'; statusEl.style.color = 'var(--good)'; }
+        flashSaved();
+      }
+
+      function bindToggle(rowId, valId, on, onText, offText, onChange) {
+        var row = $id(rowId), val = $id(valId), state = !!on;
+        function render() { if (val) val.textContent = state ? onText : offText; }
+        render();
+        function flip() { state = !state; render(); if (onChange) onChange(state); save(); }
+        if (row) {
+          row.addEventListener('click', flip);
+          row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+        }
+        return function () { return state; };
+      }
+
+      setSel('optPrivacy', d.privacy || 'private');
+      setSel('optCategory', d.category || '1');
+      setSel('optLicense', d.license || 'youtube');
+      setSel('optLang', d.lang || '');
+      setSel('optTags', d.tags || '');
+      setSel('optPlaylist', d.playlist || '');
+      setSel('optScheduleAt', d.scheduleAt || '');
+
+      var schedAt = $id('optScheduleAt');
+      getSchedule = bindToggle('optScheduleRow', 'optScheduleVal', !!d.scheduleOn, 'On', 'Off', function (on) {
+        if (schedAt) schedAt.style.display = on ? 'block' : 'none';
       });
+      if (schedAt) schedAt.style.display = d.scheduleOn ? 'block' : 'none';
+
+      getKids = bindToggle('optKidsRow', 'optKidsVal', (d.kids === true || d.kids === 'yes'), 'Yes', 'No');
+      getComments = bindToggle('optCommentsRow', 'optCommentsVal', d.comments !== false, 'On', 'Off');
+      getNotify = bindToggle('optNotifyRow', 'optNotifyVal', d.notify !== false, 'Yes', 'No');
+      getEmbed = bindToggle('optEmbedRow', 'optEmbedVal', d.embeddable !== false, 'On', 'Off');
+
+      ['optPrivacy', 'optCategory', 'optLicense', 'optLang', 'optScheduleAt', 'optTags', 'optPlaylist'].forEach(function (id) {
+        var el = $id(id); if (el) el.addEventListener('change', save);
+      });
+
+      var capBtn = $id('optCaptionBtn'), cap = $id('optCaption');
+      if (capBtn && cap) {
+        capBtn.addEventListener('click', function () { cap.click(); });
+        cap.addEventListener('change', function () {
+          capBtn.textContent = (cap.files && cap.files.length) ? cap.files[0].name : 'Upload .srt / .vtt';
+        });
+      }
     }
+
+    // ---- template drawers + auto-save, frame upload trigger ----
+    (function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.tpldrop-head'), function (h) {
+        h.addEventListener('click', function () {
+          var dr = h.parentNode; if (dr) dr.classList.toggle('collapsed');
+        });
+      });
+      var tplSaveTimer = null;
+      function doTplSave() {
+        if (!tplSaveBtn) return;
+        if (tplSaveBtn.disabled) { tplSaveTimer = setTimeout(doTplSave, 400); return; }
+        tplSaveBtn.click();
+      }
+      function queueTplSave() { clearTimeout(tplSaveTimer); tplSaveTimer = setTimeout(doTplSave, 650); }
+      if (typeof tplTitle !== 'undefined' && tplTitle) tplTitle.addEventListener('input', queueTplSave);
+      if (typeof tplDesc !== 'undefined' && tplDesc) tplDesc.addEventListener('input', queueTplSave);
+      var fub = document.getElementById('frameUploadBtn'), fu = document.getElementById('frameUpload');
+      if (fub && fu) fub.addEventListener('click', function () { fu.click(); });
+    })();
 
     loadTemplate();
     initUploadOptions();
