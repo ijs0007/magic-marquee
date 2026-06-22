@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.33";
+const APP_VERSION = "0.34";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -741,6 +741,10 @@ app.use(express.json({ limit: "12mb" })); // base64 thumbnail images can be a fe
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/tabs.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "tabs.html"));
 });
 
 app.get("/api/status", (req, res) => {

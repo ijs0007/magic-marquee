@@ -1,0 +1,2376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1a1c">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Magic Marquee</title>
+  <style>
+    :root {
+      --bg:#faf9f5; --surface:#ffffff; --field:#ffffff; --chip:#f0eee8;
+      --border:rgba(0,0,0,0.10); --text:#1a1a18; --text-soft:#6b6a64;
+      --accent:#2f80ff; --accent-soft:rgba(47,128,255,.14); --accent-text:#ffffff; --good:#2e9e6b;
+      
+      color-scheme:light dark;
+    }
+    body.dark {
+      --bg:#161618; --surface:#1d1d1f; --field:#2b2b2f; --chip:#34343a;
+      --border:rgba(255,255,255,0.12); --text:#f0f0f2; --text-soft:#adadb3;
+      --accent-soft:rgba(47,128,255,.22); --good:#43c48a;
+    }
+    * { box-sizing:border-box; }
+    body {
+      font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      color:var(--text); background:var(--bg); margin:0; padding:24px 16px;
+      -webkit-font-smoothing:antialiased;
+    }
+    .wrap { max-width:540px; margin:0 auto; }
+    h1 { font-size:23px; font-weight:700; letter-spacing:-.02em; margin:0 0 3px; }
+    .sub { color:var(--text-soft); margin:0 0 20px; font-size:14px; }
+    .hrow { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .hrow h1 { margin:0; }
+    .help { width:26px; height:26px; flex:none; padding:0; border-radius:50%; background:var(--border); color:var(--text-soft); font-weight:700; font-size:14px; line-height:1; }
+    .help:hover { background:var(--chip); color:var(--text); }
+    .helppanel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:16px; font-size:13px; line-height:1.55; color:var(--text-soft); }
+    .helppanel b { color:var(--text); font-weight:600; }
+    .card {
+      background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:14px;
+      box-shadow:0 1px 3px rgba(0,0,0,.4);
+    }
+    body.dark .card { background:transparent; border-color:transparent; box-shadow:none; }
+    body.dark .enhancepanel { background:var(--surface); }
+    body.dark .enhopt { background:var(--field); }
+    .status { display:flex; align-items:center; gap:9px; font-size:14px; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#3a3a42; flex:none; }
+    .dot.ok { background:#32d74b; }
+    .dot.warn { background:#ff9f0a; }
+    label { display:block; font-size:12.5px; font-weight:600; color:var(--text-soft); margin:0 0 5px; }
+    .gradelbl { font-weight:500; font-size:12px; margin:6px 0 4px; opacity:.9; }
+    input[type=text], input[type=file] {
+      width:100%; font:inherit; color:var(--text); padding:10px 12px; border:1px solid var(--border);
+      border-radius:10px; background:var(--field); margin-bottom:12px;
+    }
+    select {
+      width:100%; font:inherit; color:var(--text); padding:10px 12px; border:1px solid var(--border);
+      border-radius:10px; background:var(--field); margin-bottom:8px; cursor:pointer;
+    }
+    input[type=file] { padding:7px 10px; font-size:13px; color:var(--text-soft); }
+    input[type=file]::file-selector-button,
+    input[type=file]::-webkit-file-upload-button {
+      font:inherit; font-weight:600; font-size:13px; border:0; border-radius:8px;
+      padding:6px 13px; margin-right:11px; background:var(--chip); color:#cfcfd6;
+      cursor:pointer; transition:background .15s;
+    }
+    input[type=file]:hover::file-selector-button,
+    input[type=file]:hover::-webkit-file-upload-button { background:var(--chip); }
+    input[type=text]:focus, textarea:focus, select:focus { outline:none; border-color:var(--accent); }
+    input::placeholder, textarea::placeholder { color:var(--text-soft); }
+    button {
+      display:inline-block; font:inherit; font-weight:600; border:0; cursor:pointer;
+      background:var(--accent); color:#fff; padding:11px 18px; border-radius:11px;
+      width:100%; transition:opacity .15s;
+    }
+    button:disabled { opacity:.5; cursor:default; }
+    button.secondary { background:var(--border); color:var(--accent); }
+    textarea {
+      width:100%; font:inherit; color:var(--text); padding:10px 12px; border:1px solid var(--border);
+      border-radius:10px; background:var(--field); margin-bottom:12px;
+      min-height:80px; resize:vertical; line-height:1.5;
+    }
+    .genstatus { font-size:13px; margin:10px 0 16px; }
+    .checkrow { display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--text); font-weight:400; line-height:1.45; margin:0 0 16px; cursor:pointer; }
+    .checkrow input { width:auto; margin:2px 0 0; flex:none; cursor:pointer; accent-color:var(--accent); }
+    .checkrow b { font-weight:600; }
+    a.btn { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:11px 18px; border-radius:11px; font-weight:600; }
+    .hint { font-size:13px; color:var(--text-soft); margin:10px 0 0; }
+    .progress { display:none; margin-top:18px; }
+    .progress.show { display:block; }
+    .resumebox { display:none; margin-top:14px; padding:14px; border:1px solid #3d3017; border-radius:12px; background:#241c10; }
+    .resumebox.show { display:block; }
+    .resumetext { font-size:13px; color:#f0b54a; font-weight:600; margin-bottom:10px; line-height:1.45; }
+    a.cancel { display:inline-block; font-size:12px; color:var(--text-soft); text-decoration:none; }
+    a.cancel:hover { color:#ff453a; }
+    .pbar-label { display:flex; justify-content:space-between; font-size:13px; color:var(--text-soft); margin-bottom:6px; }
+    .pbar { height:8px; background:var(--chip); border-radius:99px; overflow:hidden; }
+    .pbar > span { display:block; height:100%; width:0%; background:var(--accent); border-radius:99px; transition:width .3s; }
+    .pbar.indet > span { width:40%; animation:slide 1.1s ease-in-out infinite; }
+    @keyframes slide { 0%{margin-left:-40%} 100%{margin-left:100%} }
+    .result { display:none; font-size:14px; margin-top:18px; }
+    .result.show { display:block; }
+    .row { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--border); }
+    .row:last-child { border-bottom:0; }
+    .row b { font-weight:600; }
+    .badge.private { color:#32d74b; font-weight:700; }
+    .err { color:#ff453a; font-weight:600; }
+    .links a { color:var(--accent); text-decoration:none; }
+    .foot { text-align:center; color:var(--text-soft); font-size:12px; margin-top:18px; }
+    .topbusy { position:fixed; top:10px; left:50%; transform:translateX(-50%); display:none; align-items:center; gap:9px; background:rgba(22,22,27,.96); border:1px solid var(--border); color:var(--text); padding:8px 14px; border-radius:99px; font-size:13px; font-weight:600; z-index:50; box-shadow:0 6px 20px rgba(0,0,0,.45); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); max-width:calc(100% - 24px); }
+    .topbusy.show { display:inline-flex; }
+    .topbusy-spin { width:15px; height:15px; border-radius:50%; border:2px solid rgba(255,255,255,.22); border-top-color:var(--accent); animation:topbusyspin .7s linear infinite; flex:none; }
+    @keyframes topbusyspin { to { transform:rotate(360deg); } }
+    .topbusy #topBusyLabel { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .topbusy-pct { color:var(--accent); font-variant-numeric:tabular-nums; }
+    .lightbox { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.88); z-index:100; padding:20px; cursor:zoom-out; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+    .lightbox.show { display:flex; }
+    .lightbox img { max-width:100%; max-height:100%; width:auto; height:auto; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+    .lightbox-x { position:fixed; top:12px; right:18px; color:#fff; font-size:30px; line-height:1; font-weight:300; opacity:.85; }
+    .lblrow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 6px; }
+    .ghostbtn { width:auto; flex:none; background:var(--chip); color:var(--accent); border:1px solid var(--border); font-size:12px; font-weight:600; padding:5px 10px; border-radius:8px; cursor:pointer; }
+    .ghostbtn.off { color:var(--text-soft); }
+    .eyeslash { opacity:0; }
+    .ghostbtn.off .eyeslash { opacity:1; }
+    .ghostbtn:hover:not(:disabled) { border-color:var(--accent); }
+    .ghostbtn:disabled { opacity:.5; cursor:default; }
+    .titleview { font-size:14px; color:var(--text); font-weight:600; line-height:1.35; word-break:break-word; flex:1; }
+    .framespin { display:inline-flex; align-items:center; gap:9px; height:62px; padding:0 4px; color:var(--text-soft); font-size:13px; }
+    .framespin .sp { width:18px; height:18px; flex:none; border-radius:50%; border:2px solid rgba(255,255,255,.22); border-top-color:var(--accent); animation:topbusyspin .7s linear infinite; }
+    .tabs { display:flex; gap:8px; margin-bottom:16px; }
+    .tab { width:auto; flex:1; background:var(--chip); color:var(--text); font-weight:600; padding:10px 14px; border-radius:11px; }
+    .tab.active { background:var(--accent); color:#fff; }
+    .field { margin-bottom:14px; }
+    .field label { margin-bottom:6px; }
+    .tplnote { font-size:13px; color:var(--text-soft); margin:2px 0 14px; }
+    .framestrip { display:flex; gap:8px; overflow-x:auto; margin-bottom:12px; padding-bottom:4px; }
+    .framestrip img { height:62px; border-radius:8px; cursor:pointer; border:2px solid transparent; flex:none; }
+    .framestrip img.sel { border-color:var(--accent); }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+    .chip { width:auto; background:var(--chip); color:var(--text); border:1px solid var(--border); padding:6px 11px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none; }
+    .chip.blue { background:rgba(14,170,245,.16); color:#0eaaf5; border-color:#0eaaf5; }
+    .chip.scrubbing { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+    .posgrid { display:grid; grid-template-columns:repeat(3,40px); gap:6px; margin-bottom:18px; }
+    .posgrid button { width:40px; height:40px; background:var(--chip); color:var(--text-soft); padding:0; border-radius:8px; font-size:16px; line-height:1; }
+    .posgrid button.sel { background:var(--accent); color:#fff; }
+    .segmented { display:flex; flex-wrap:wrap; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px; margin-bottom:14px; }
+    .segmented button { flex:1 1 70px; width:auto; background:transparent; color:var(--text-soft); padding:9px 0; border-radius:7px; font-size:13px; font-weight:600; }
+    .segmented button.sel { background:var(--accent); color:#fff; }
+    .thumbsticky { position:sticky; top:0; z-index:5; background:var(--surface); padding:6px 0 10px; box-shadow:0 8px 14px -8px rgba(0,0,0,.7); }
+    #thumbCanvas { width:100%; height:auto; border-radius:12px; display:block; background:#000; touch-action:none; cursor:grab; }
+    #thumbCanvas:active { cursor:grabbing; }
+    .ctlval { color:var(--text-soft); font-weight:600; font-size:13px; }
+    input[type=range] { width:100%; margin:2px 0 16px; accent-color:var(--accent); }
+    .swatches { display:grid; grid-template-columns:repeat(6,30px); gap:10px; margin-bottom:18px; justify-content:start; }
+    .swatches button { width:30px; height:30px; border-radius:50%; padding:0; border:2px solid transparent; cursor:pointer; }
+    .swatches button.sel { border-color:#fff; box-shadow:0 0 0 2px var(--bg); }
+    .filerow { display:flex; gap:8px; align-items:stretch; margin-bottom:12px; }
+    .filerow input[type=file] { margin-bottom:0; flex:1; min-width:0; }
+    .filerow button { width:auto; flex:none; padding:0 20px; white-space:nowrap; }
+    .dialgrid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .dial { display:flex; flex-direction:column; align-items:flex-start; flex:0 0 auto; gap:1px; background:var(--field); border:1px solid var(--border); border-radius:10px; padding:7px 11px; cursor:ew-resize; touch-action:none; user-select:none; -webkit-user-select:none; }
+    .dial .dk { font-size:10.5px; color:var(--text-soft); font-weight:500; }
+    .dial .dv { font-size:15px; color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+    .dial:active { border-color:var(--accent); background:var(--accent-soft); }
+    .dialhint { font-size:11.5px; color:var(--text-soft); margin:-2px 0 14px; opacity:.85; }
+    .sec { margin-bottom:14px; }
+    .sec:last-of-type { margin-bottom:0; }
+    .sechead { display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:14px; font-weight:700; color:var(--text); padding:2px 0 12px; letter-spacing:.2px; user-select:none; -webkit-user-select:none; }
+    .sechead .chev { color:var(--text-soft); font-size:11px; transition:transform .2s ease; }
+    .sec.collapsed .sechead { padding-bottom:0; color:var(--text-soft); }
+    .sec.collapsed .chev { transform:rotate(-90deg); }
+    .sec.collapsed .secbody { display:none; }
+    .enhancepanel { background:var(--field); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:14px; }
+    .enhrow { display:grid; grid-template-columns:repeat(auto-fit, minmax(116px, 1fr)); gap:8px; margin-bottom:10px; }
+    .enhopt { width:auto; background:var(--chip); color:var(--text); font-size:13px; font-weight:600; padding:10px 8px; border:1px solid var(--border); border-radius:9px; }
+    .enhopt:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+    .enhancepanel input[type=text] { margin-bottom:0; }
+    .lblq { display:flex; align-items:center; gap:6px; margin:0 0 5px; }
+    .lblq label { margin:0; }
+    .tipbtn { width:18px; height:18px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-soft); font-size:11px; font-weight:700; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; padding:0; }
+    .tipbtn:hover, .tipbtn.on { border-color:var(--accent); color:var(--accent); }
+    .tip { display:none; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 12px; margin:-2px 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-soft); }
+    .tip.show { display:block; }
+    .tip b { color:var(--text); font-weight:600; }
+    .tip p { margin:0 0 6px; }
+    .tip p:last-child { margin:0; }
+    .btnrow { display:flex; align-items:center; gap:8px; }
+    .btnrow > button.secondary { flex:1 1 auto; width:auto; }
+  
+    /* ---- Magic Marquee brand + theme/accent controls (ported from MSM) ---- */
+    .brand { display:flex; align-items:center; gap:9px; font-family:"Poppins","Segoe UI",-apple-system,sans-serif; font-weight:700; font-size:21px; letter-spacing:-.01em; }
+    .brand .star { font-size:18px; color:var(--title-g2, var(--accent)); }
+    .brand .wm { background:linear-gradient(92deg, var(--title-g1,#5fa0ff), var(--title-g2,#2f80ff) 55%, var(--title-g3,#4fc3f7)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .hbtns { display:flex; align-items:center; gap:7px; }
+    .theme-toggle { width:auto; flex:none; font-size:15px; line-height:1; padding:7px 10px; border-radius:9px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; transition:background .15s; }
+    .theme-toggle:hover { background:var(--chip); }
+    .accent-pop { display:flex; flex-wrap:wrap; gap:9px; width:max-content; max-width:200px; margin:-10px 0 16px auto; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,.32); }
+    .accent-pop[hidden] { display:none; }
+    .acc-sw { width:26px; height:26px; flex:none; border-radius:50%; padding:0; border:2px solid transparent; cursor:pointer; }
+    .acc-sw.sel { border-color:var(--text); box-shadow:0 0 0 2px var(--surface); }
+    #msmProject, #msmProject option { text-align:center; }
+    #msmProject { text-align-last:center; }
+    /* ---- Tabbed rooms: status strip, panels, text-tools row ---- */
+    .statusstrip { display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--border); color:var(--text-soft); padding:8px 14px; border-radius:11px; font-size:13px; font-weight:600; margin-bottom:16px; min-height:38px; }
+    body.dark .statusstrip { background:var(--field); }
+    .statusstrip .topbusy-spin { visibility:hidden; }
+    .statusstrip.active { color:var(--text); }
+    .statusstrip.active .topbusy-spin { visibility:visible; }
+    .statusstrip #topBusyLabel { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+    .placeholder { color:var(--text-soft); font-size:13.5px; line-height:1.55; text-align:center; }
+    .placeholder b { color:var(--text); font-weight:600; }
+    .texttools { display:flex; flex-wrap:wrap; gap:16px 22px; align-items:flex-start; margin-bottom:16px; }
+    .tt-block { display:flex; flex-direction:column; gap:8px; }
+    .tt-label { font-size:11px; font-weight:700; color:var(--text-soft); letter-spacing:.04em; text-transform:uppercase; }
+    .texttools .swatches { grid-template-columns:repeat(4,30px); margin-bottom:0; }
+    .texttools .posgrid { margin-bottom:0; }
+    .texttools .dial { min-width:108px; }
+</style>
+</head>
+<body>
+  <script>try{if(localStorage.getItem("mp_theme")!=="light")document.body.classList.add("dark");}catch(e){}</script>
+  <div class="wrap">
+    <div class="hrow">
+      <div class="brand"><span class="star">✦</span><span class="wm">Magic Marquee</span></div>
+      <div class="hbtns">
+        <button id="helpBtn" class="theme-toggle" type="button" title="How it works" aria-label="How it works">?</button>
+        <button id="accentBtn" class="theme-toggle" type="button" title="Accent color" aria-label="Accent color">🎨</button>
+        <button id="themeToggle" class="theme-toggle" type="button" title="Light / dark" aria-label="Toggle theme">🌙</button>
+      </div>
+    </div>
+    <div id="accentPop" class="accent-pop" hidden></div>
+    <div id="helpPanel" class="helppanel" style="display:none">
+      Upload a finished film — it goes straight to cloud storage, then transfers to YouTube as a <b>private</b> draft. If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabPublish">Publish</button>
+      <button class="tab" id="tabThumbnail">Thumbnail</button>
+      <button class="tab" id="tabOptions">Options</button>
+    </div>
+
+    <div id="topBusy" class="statusstrip" aria-live="polite"><span class="topbusy-spin"></span><span id="topBusyLabel">Ready</span><span id="topBusyPct" class="topbusy-pct"></span></div>
+
+    <div id="publishView" class="panel">
+      <div class="card" id="statusCard">
+      <div class="status"><span id="dot" class="dot"></span><span id="statusText">Checking status…</span></div>
+      <div id="authBlock" style="margin-top:16px; display:none;">
+        <a class="btn" href="/auth">Authorize with YouTube</a>
+        <p class="hint">One-time Google sign-in to grant upload access to your channel.</p>
+      </div>
+    </div>
+      <div class="card">
+        <div class="sec" id="secDetails">
+        <div class="sechead">Video &amp; details<span class="chev">&#9662;</span></div>
+        <div class="secbody">
+          <label for="video">Video file</label>
+          <div class="filerow">
+            <input type="file" id="video" accept="video/*">
+            <button id="uploadBtn" disabled>Upload</button>
+          </div>
+
+          <div class="lblq"><label for="transcript">Transcript (optional)</label><button type="button" class="tipbtn" data-tip="tipTranscript" aria-label="Help: Transcript" aria-expanded="false">?</button></div>
+          <input type="file" id="transcript" accept=".srt,.vtt,.txt,text/plain">
+          <div id="tipTranscript" class="tip"><p>Optional. If you already have a transcript (.srt, .vtt, or .txt), drop it here and the app skips listening to your film.</p><p>Leave it empty and the app transcribes the dialogue for you automatically.</p></div>
+
+          <div class="lblq"><label for="logline">Logline (optional)</label><button type="button" class="tipbtn" data-tip="tipLogline" aria-label="Help: Logline" aria-expanded="false">?</button></div>
+          <input type="text" id="logline" placeholder="One line about the film — used if it has little dialogue">
+          <div id="tipLogline" class="tip"><p>One sentence about your film. The app uses it to write your <b>title and description</b> when the film has little or no spoken dialogue.</p><p>If your film has plenty of dialogue, you can leave this blank — the transcript covers it.</p></div>
+
+          <div id="msmRow" style="display:none">
+            <label for="msmProject">Magic Story Maker project <span class="ctlval">— auto-fills cast &amp; crew</span></label>
+            <select id="msmProject"><option value="">— none —</option></select>
+            <p class="genstatus" id="msmStatus" style="margin-top:6px"></p>
+          </div>
+
+          <div class="btnrow"><button id="genBtn" class="secondary" disabled>✨ Generate title &amp; description</button><button type="button" class="tipbtn" data-tip="tipGen" aria-label="What is this?" aria-expanded="false">?</button></div>
+          <div id="tipGen" class="tip"><p>Optional. After you upload, the app writes your title, description, and chapters <b>automatically</b>.</p><p>Use this only if you want to see them now — generated from your transcript or logline — before the video finishes uploading.</p></div>
+          <p class="genstatus" id="genStatus"></p>
+        </div>
+      </div>
+
+        <div class="sec" id="secReview">
+        <div class="sechead">Title &amp; description<span class="chev">&#9662;</span></div>
+        <div class="secbody">
+          <label for="title">Title</label>
+          <input type="text" id="title" placeholder="My film">
+
+          <label for="description">Description</label>
+          <textarea id="description" placeholder="Description — chapter timestamps appear here when generated from a timed transcript."></textarea>
+
+          <button id="sendBtn" style="display:none">Send to YouTube</button>
+        </div>
+      </div>
+
+        <div class="sec collapsed" id="secTemplate">
+          <div class="sechead">Title &amp; description templates<span class="chev">&#9662;</span></div>
+          <div class="secbody">
+            <label for="tplTitle">Title template</label>
+            <input type="text" id="tplTitle" placeholder="{{TITLE}} | Isaiah Jeremiah">
+            <label for="tplDesc">Description template</label>
+            <textarea id="tplDesc" style="min-height:200px" placeholder="Your permanent description, with {{TOKEN}} slots where things change per video…"></textarea>
+            <p class="hint" id="tplLegend" style="margin:-6px 0 16px"></p>
+            <button id="tplSaveBtn">Save template</button>
+            <p class="genstatus" id="tplStatus"></p>
+          </div>
+        </div>
+
+        <div class="sec" id="secStatus" style="display:none">
+        <div class="sechead">Status<span class="chev">&#9662;</span></div>
+        <div class="secbody">
+          <div id="prog1" class="progress">
+            <div class="pbar-label"><span id="p1label">Uploading to R2</span><span id="p1pct">0%</span></div>
+            <div class="pbar"><span id="p1bar"></span></div>
+          </div>
+
+          <div id="resumeBox" class="resumebox">
+            <div class="resumetext" id="resumeText">Upload paused.</div>
+            <button id="resumeBtn" class="secondary" style="margin-bottom:8px">Resume upload</button>
+            <a href="#" id="cancelLink" class="cancel">Cancel this upload</a>
+          </div>
+
+          <div id="progT" class="progress">
+            <div class="pbar-label"><span id="pTlabel">Transcribing</span></div>
+            <div class="pbar indet" id="pTwrap"><span id="pTbar"></span></div>
+          </div>
+
+          <div id="prog2" class="progress">
+            <div class="pbar-label"><span id="p2label">Sending to YouTube</span><span id="p2pct"></span></div>
+            <div class="pbar" id="p2wrap"><span id="p2bar"></span></div>
+          </div>
+
+          <div id="result" class="result"><div id="resultBody"></div></div>
+          <button id="makeThumbBtn" style="display:none; margin-top:14px">🎨 Make thumbnail</button>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div id="thumbnailView" class="panel" style="display:none">
+      <div id="thumbPlaceholder" class="card placeholder">Your thumbnail studio opens here once a film has uploaded and processed. Head to <b>Publish</b>, send a film, then tap <b>Make thumbnail</b>.</div>
+      <div id="thumbCard" class="card" style="display:none">
+      <label style="font-size:15px; color:var(--text); margin-bottom:12px">Thumbnail</label>
+      <div id="styleToggle" class="segmented">
+        <button type="button" data-style="cinematic" class="sel">Cinematic</button>
+        <button type="button" data-style="spotlight">Spotlight</button>
+        <button type="button" data-style="sidebar">Sidebar</button>
+        <button type="button" data-style="blocks">Blocks</button>
+      </div>
+      <label>Border</label>
+      <div id="borderToggle" class="segmented">
+        <button type="button" data-border="brand" class="sel">Brand</button>
+        <button type="button" data-border="white">White</button>
+        <button type="button" data-border="black">Black</button>
+        <button type="button" data-border="accent">Accent</button>
+        <button type="button" data-border="none">None</button>
+      </div>
+      <div class="thumbsticky"><canvas id="thumbCanvas" width="1280" height="720"></canvas></div>
+      <p class="genstatus" id="thumbStatus"></p>
+
+      <label>Frame from your film</label>
+      <div id="frameStrip" class="framestrip"></div>
+      <button id="moreFramesBtn" class="secondary" type="button" style="margin:0 0 12px">↻ More frame choices</button>
+      <input type="file" id="frameUpload" accept="image/*">
+      <p class="hint" style="margin:-8px 0 14px">Pick an auto-grabbed frame, or upload your own still. <b>Drag the image to reposition it</b> &mdash; hold Shift/Ctrl to lock one axis, or nudge with the &#8596; &#8597; dials.</p>
+
+      <button id="enhanceBtn" class="secondary" type="button" style="display:none; margin-bottom:12px">✨ Enhance with AI</button>
+      <div id="enhancePanel" class="enhancepanel" style="display:none">
+        <div class="lblq" style="margin-bottom:8px"><label>AI image options</label><button type="button" class="tipbtn" data-tip="tipEnhance" aria-label="What do these do?" aria-expanded="false">?</button></div>
+        <div id="tipEnhance" class="tip" style="margin-top:0"><p><b>Touch up shot</b> — polishes the frame you already have: cleans it up and improves the look while keeping the same shot.</p><p><b>Replace background</b> — keeps your subject and swaps what's behind them. Describe the new background in the box.</p><p><b>Generate background</b> — makes a brand-new background from your description (no frame needed).</p><p><b>Extend background</b> — fills the empty side bars (from a portrait or a reframed shot) with AI, keeping your subject and framing exactly as-is.</p><p>Write the look you want in plain words — colors, lighting, mood. Don't name brands, movies, shows, or characters; OpenAI blocks those.</p></div>
+        <div class="enhrow">
+          <button type="button" class="enhopt" data-mode="touchup">Touch up shot</button>
+          <button type="button" class="enhopt" data-mode="replacebg">Replace background</button>
+          <button type="button" class="enhopt" data-mode="genbg">Generate background</button>
+          <button type="button" class="enhopt" data-mode="extendbg">Extend background</button>
+        </div>
+        <input type="text" id="enhancePrompt" placeholder="Optional: describe the look or background">
+        <p class="hint" id="enhanceCost" style="margin:0 0 4px">Uses your OpenAI key · a few cents per image · ~15–45s.</p>
+        <p class="genstatus" id="enhanceStatus" style="margin:6px 0 0"></p>
+      </div>
+
+      <label>Image adjustments</label>
+      <p style="font-size:11px;font-weight:700;color:var(--text-soft);letter-spacing:.04em;text-transform:uppercase;margin:0 0 6px">Position &amp; zoom</p>
+      <div class="dialgrid">
+        <div class="dial" id="dZoom"><span class="dk">Zoom</span><span class="dv" id="zoomVal">1.0&times;</span></div>
+        <div class="dial" id="dPosX"><span class="dk">&#8596; Across</span><span class="dv" id="posXVal">0</span></div>
+        <div class="dial" id="dPosY"><span class="dk">&#8597; Up/Down</span><span class="dv" id="posYVal">0</span></div>
+      </div>
+      <p style="font-size:11px;font-weight:700;color:var(--text-soft);letter-spacing:.04em;text-transform:uppercase;margin:10px 0 6px">Color</p>
+      <div class="dialgrid">
+        <div class="dial" id="dSat"><span class="dk">Saturation</span><span class="dv" id="satVal">100%</span></div>
+        <div class="dial" id="dCon"><span class="dk">Contrast</span><span class="dv" id="conVal">100%</span></div>
+        <div class="dial" id="dBri"><span class="dk">Brightness</span><span class="dv" id="briVal">100%</span></div>
+        <div class="dial" id="dSha"><span class="dk">Sharpness</span><span class="dv" id="shaVal">0%</span></div>
+      </div>
+      <p class="dialhint">Drag a dial sideways to adjust &middot; double-tap to reset it.</p>
+      <button id="resetGradeBtn" class="secondary" style="margin:0 0 16px">Reset image</button>
+
+      <label>Video title</label>
+      <div class="lblrow"><span id="thumbTitleView" class="titleview">—</span><button id="newTitleBtn" class="ghostbtn" type="button">↻ New</button></div>
+
+      <div class="lblrow"><label for="overlayText" style="margin:0">Headline (on-screen text) — one line per row</label><span style="display:flex;gap:8px"><button id="toggleTextBtn" class="ghostbtn" type="button" title="Hide text" aria-label="Hide text"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="vertical-align:-2px"><path d="M1 8s2.6-4.6 7-4.6S15 8 15 8s-2.6 4.6-7 4.6S1 8 1 8z"/><circle cx="8" cy="8" r="2"/><line class="eyeslash" x1="2" y1="2" x2="14" y2="14"/></svg></button><button id="newTextBtn" class="ghostbtn" type="button">↻ New</button></span></div>
+      <textarea id="overlayText" style="min-height:84px" placeholder="The punchy text on the thumbnail"></textarea>
+
+      <label>Tap a word to color it · hold &amp; drag to resize</label>
+      <div id="wordChips" class="chips"></div>
+
+      <label>Text styling</label>
+      <div class="texttools">
+        <div class="tt-block">
+          <span class="tt-label">Highlight color</span>
+          <div id="accentRow" class="swatches"></div>
+        </div>
+        <div class="tt-block">
+          <span class="tt-label">Position</span>
+          <div id="posGrid" class="posgrid"></div>
+        </div>
+        <div class="tt-block">
+          <span class="tt-label">Size</span>
+          <div class="dial" id="dSize" style="min-width:108px"><span class="dk">Size</span><span class="dv" id="sizeVal">100%</span></div>
+        </div>
+      </div>
+
+      <button id="setThumbBtn" disabled>Set as YouTube thumbnail</button>
+      <button id="downloadThumbBtn" class="secondary" style="margin-top:8px">Download thumbnail</button>
+    </div>
+    </div>
+
+    <div id="optionsView" class="panel" style="display:none">
+      <div class="card">
+        <label style="font-size:15px; color:var(--text); margin-bottom:6px">Upload defaults</label>
+        <p class="hint" style="margin:0 0 16px">Saved on this device and used as the defaults for your next upload.</p>
+
+        <label>Privacy</label>
+        <div id="optPrivacy" class="segmented">
+          <button type="button" data-v="public">Public</button>
+          <button type="button" data-v="unlisted">Unlisted</button>
+          <button type="button" data-v="private" class="sel">Private</button>
+        </div>
+
+        <label class="checkrow" style="margin-bottom:10px"><input type="checkbox" id="optScheduleOn"><span>Schedule publish for a specific time</span></label>
+        <input type="datetime-local" id="optScheduleAt" style="width:100%; font:inherit; color:var(--text); padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--field); margin-bottom:14px; display:none">
+
+        <label for="optCategory">Category</label>
+        <select id="optCategory"><option value="1">Film &amp; Animation</option><option value="2">Autos &amp; Vehicles</option><option value="10">Music</option><option value="15">Pets &amp; Animals</option><option value="17">Sports</option><option value="19">Travel &amp; Events</option><option value="20">Gaming</option><option value="22">People &amp; Blogs</option><option value="23">Comedy</option><option value="24">Entertainment</option><option value="25">News &amp; Politics</option><option value="26">Howto &amp; Style</option><option value="27">Education</option><option value="28">Science &amp; Technology</option></select>
+
+        <label for="optTags" style="margin-top:8px">Tags <span class="ctlval">— comma separated</span></label>
+        <input type="text" id="optTags" placeholder="short film, drama, indie">
+
+        <label>Audience</label>
+        <div id="optKids" class="segmented">
+          <button type="button" data-v="no" class="sel">Not made for kids</button>
+          <button type="button" data-v="yes">Made for kids</button>
+        </div>
+
+        <label>License</label>
+        <div id="optLicense" class="segmented">
+          <button type="button" data-v="youtube" class="sel">Standard</button>
+          <button type="button" data-v="creativeCommon">Creative Commons</button>
+        </div>
+
+        <label for="optLang">Default language</label>
+        <select id="optLang"><option value="">— none —</option><option value="en">English</option><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="ja">Japanese</option></select>
+
+        <label for="optPlaylist" style="margin-top:8px">Add to playlist <span class="ctlval">— name or ID, optional</span></label>
+        <input type="text" id="optPlaylist" placeholder="e.g. Short Films">
+
+        <label class="checkrow" style="margin-bottom:10px"><input type="checkbox" id="optEmbeddable" checked><span>Allow embedding on other sites</span></label>
+        <label class="checkrow" style="margin-bottom:16px"><input type="checkbox" id="optNotify" checked><span>Notify subscribers when published</span></label>
+
+        <label for="optCaption">Caption file <span class="ctlval">— .srt or .vtt, optional</span></label>
+        <input type="file" id="optCaption" accept=".srt,.vtt">
+
+        <button id="optSaveBtn">Save defaults</button>
+        <p class="genstatus" id="optStatus"></p>
+        <p class="hint" style="margin-top:4px">Heads-up: these defaults save now, but films still upload as <b>private drafts</b> until the YouTube publishing fields are wired into the upload — that’s the next step.</p>
+      </div>
+    </div>
+
+    <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
+    <div class="foot">Magic Marquee · v0.50</div>
+  </div>
+
+  <script>
+    const dot = document.getElementById('dot');
+    const statusText = document.getElementById('statusText');
+    const authBlock = document.getElementById('authBlock');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const fileInput = document.getElementById('video');
+    const transcriptInput = document.getElementById('transcript');
+    const loglineInput = document.getElementById('logline');
+    const titleInput = document.getElementById('title');
+    const descInput = document.getElementById('description');
+    const genBtn = document.getElementById('genBtn');
+    const genStatus = document.getElementById('genStatus');
+    const prog1 = document.getElementById('prog1');
+    const progT = document.getElementById('progT');
+    const prog2 = document.getElementById('prog2');
+    const p1bar = document.getElementById('p1bar');
+    const p1pct = document.getElementById('p1pct');
+    const pTlabel = document.getElementById('pTlabel');
+    const pTwrap = document.getElementById('pTwrap');
+    const pTbar = document.getElementById('pTbar');
+    const p2bar = document.getElementById('p2bar');
+    const p2pct = document.getElementById('p2pct');
+    const p2wrap = document.getElementById('p2wrap');
+    const p2label = document.getElementById('p2label');
+    const result = document.getElementById('result');
+    const resultBody = document.getElementById('resultBody');
+    const p1label = document.getElementById('p1label');
+    const resumeBox = document.getElementById('resumeBox');
+    const resumeText = document.getElementById('resumeText');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const cancelLink = document.getElementById('cancelLink');
+
+    // Files at/over this go through chunked (multipart) upload; smaller ones keep
+    // the proven single-PUT path. Must mirror MULTIPART_MIN on the server.
+    const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB
+
+    let ready = false;            // YouTube + R2 ready (upload allowed)
+    let aiReady = false;          // Anthropic key set (Generate allowed)
+    let transcribeReady = false;  // OpenAI key + ffmpeg set (Whisper allowed)
+    let imageReady = false;       // OpenAI key set (AI image enhance allowed)
+    let msmReady = false;         // MSM bridge configured (project dropdown shown)
+    let transcriptText = '';
+    let pendingKey = null;        // R2 key awaiting "Send to YouTube" after review
+
+    // ---- Thumbnail builder state ----
+    let thumbVideoId = null;      // YouTube video id to stamp onto
+    let lastUploadKey = null;     // R2 key of the uploaded master (for frame grab)
+    let lastSynopsis = '';        // stashed from metadata, feeds the overlay AI
+    let lastRawTitle = '';
+    let lastChapters = '';        // stashed so we can recompose without re-running AI
+    let selectedCastText = '';    // formatted cast block from the chosen MSM project
+    let selectedCrewText = '';    // formatted crew block
+    let overlayLines = [];        // [[{t,b}],...] source of truth for the text
+    let overlayHidden = false;   // eye toggle: hide on-screen text (also omits it from the export)
+    let frameRound = 0;           // extraction round for “more frame choices”
+    let thumbFrameImg = null;     // current background Image
+    let thumbPos = 'bl';          // text anchor: [t/m/b][l/c/r]
+    let thumbStyle = 'cinematic'; // 'cinematic' (scrim + big bottom text) | 'blocks'
+    let montserratReady = false;
+    let bgScale = 1;              // background zoom (1 = cover)
+    let bgOffsetX = 0;            // background pan (canvas px)
+    let bgOffsetY = 0;
+    let textScale = 1;           // global text-size multiplier
+    let accentColor = '#0eaaf5'; // highlight color for popped words
+    let borderStyle = 'brand'; // frame border: brand | white | black | accent | none
+    let grade = { sat: 1, contrast: 1, bright: 1, sharp: 0 }; // non-destructive image adjustments
+    let gradeReady = false;
+    let gradeCanvas = document.createElement('canvas'); gradeCanvas.width = 1280; gradeCanvas.height = 720;
+    let gradeRaf = null, gradePendingSharp = false;
+    // Coalesce rapid slider/drag events into one render per frame. Pass
+    // sharpen=false during a live drag (cheap), sharpen=true on release.
+    function scheduleGrade(sharpen) {
+      if (sharpen) gradePendingSharp = true;
+      if (gradeRaf) return;
+      gradeRaf = requestAnimationFrame(function () {
+        gradeRaf = null;
+        var s = gradePendingSharp; gradePendingSharp = false;
+        rebuildGrade(s);
+        drawThumb();
+      });
+    }
+
+    // ---- Top status pill: an always-visible spinner for long jobs, since the
+    // detailed progress bars sit lower in the card and can fall below the fold.
+    var topBusy = document.getElementById('topBusy');
+    var topBusyLabel = document.getElementById('topBusyLabel');
+    var topBusyPct = document.getElementById('topBusyPct');
+    function busy(label, pct) {
+      if (!topBusy) return;
+      if (label != null) topBusyLabel.textContent = label;
+      topBusyPct.textContent = (pct == null || pct === '') ? '' : (pct + '%');
+      topBusy.classList.add('active');
+    }
+    function busyDone() { if (topBusy) { topBusy.classList.remove('active'); topBusyLabel.textContent = 'Ready'; topBusyPct.textContent = ''; } }
+
+    async function refreshStatus() {
+      ready = false;
+      var statusCard = document.getElementById('statusCard');
+      try {
+        const s = await (await fetch('/api/status')).json();
+        aiReady = Boolean(s.aiConfigured);
+        transcribeReady = Boolean(s.transcribeConfigured);
+        imageReady = Boolean(s.imageConfigured);
+        var eb = document.getElementById('enhanceBtn'); if (eb) eb.style.display = imageReady ? 'block' : 'none';
+        msmReady = Boolean(s.msmConfigured);
+        if (!s.configured) {
+          dot.className = 'dot warn';
+          statusText.textContent = 'Missing YouTube credentials — set CLIENT_ID / CLIENT_SECRET in Render.';
+        } else if (!s.r2Configured) {
+          dot.className = 'dot warn';
+          statusText.textContent = 'YouTube ready, but R2 not configured — set the R2_* env vars in Render.';
+        } else if (!s.authorized) {
+          dot.className = 'dot warn';
+          statusText.textContent = 'Credentials set, not yet authorized.';
+          authBlock.style.display = 'block';
+        } else {
+          ready = true;
+          dot.className = 'dot ok';
+          statusText.textContent = 'Authorized, R2 connected — ready.';
+        }
+      } catch (e) {
+        dot.className = 'dot warn';
+        statusText.textContent = 'Could not reach server.';
+      }
+      // Slim: only surface the status card when something needs attention.
+      if (statusCard) statusCard.style.display = ready ? 'none' : 'block';
+      if (msmReady) loadMsmProjects();
+      updateBtn();
+      renderAiNote();
+      updateGenBtn();
+    }
+
+    function updateBtn() {
+      uploadBtn.disabled = !(ready && fileInput.files.length > 0);
+    }
+
+    function updateGenBtn() {
+      const hasInput = transcriptText.trim().length > 0 || loglineInput.value.trim().length > 0;
+      genBtn.disabled = !(aiReady && hasInput);
+    }
+
+    function renderAiNote() {
+      if (!aiReady) {
+        genStatus.innerHTML = '<span style="color:#ff9500">AI metadata off — set ANTHROPIC_API_KEY in Render to switch it on. You can still upload manually.</span>';
+      } else if (genStatus.dataset.touched !== '1') {
+        genStatus.textContent = '';
+      }
+    }
+
+    fileInput.addEventListener('change', () => { updateBtn(); });
+
+    transcriptInput.addEventListener('change', () => {
+      const f = transcriptInput.files[0];
+      if (!f) { transcriptText = ''; updateGenBtn(); return; }
+      const reader = new FileReader();
+      reader.onload = () => { transcriptText = reader.result || ''; updateGenBtn(); };
+      reader.onerror = () => { transcriptText = ''; updateGenBtn(); };
+      reader.readAsText(f);
+    });
+
+    loglineInput.addEventListener('input', updateGenBtn);
+
+    function generateMetadata(transcript, logline) {
+      return fetch('/api/metadata', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: transcript,
+          logline: logline,
+          filename: (fileInput.files[0] && fileInput.files[0].name) || '',
+          castText: selectedCastText || undefined,
+          crewText: selectedCrewText || undefined
+        })
+      }).then(r => r.json());
+    }
+
+    genBtn.addEventListener('click', async () => {
+      genBtn.disabled = true;
+      const orig = genBtn.textContent;
+      genBtn.textContent = 'Generating…';
+      genStatus.dataset.touched = '1';
+      genStatus.innerHTML = '<span style="color:var(--text-soft)">Reading your transcript and writing metadata…</span>';
+      try {
+        const md = await generateMetadata(transcriptText, loglineInput.value || '');
+        if (md.error) {
+          var hint = md.raw ? ' <span style="color:var(--text-soft)">[AI replied: ' + String(md.raw).slice(0, 140).split('<').join('&lt;') + '…]</span>' : '';
+          genStatus.innerHTML = '<span class="err">' + md.error + '</span>' + hint;
+        } else {
+          titleInput.value = md.title || '';
+          descInput.value = md.description || '';
+          lastSynopsis = md.synopsis || ''; lastRawTitle = md.rawTitle || ''; lastChapters = md.chapters || '';
+          genStatus.innerHTML = '<span style="color:#34c759">Done — edit the title or description below before uploading.</span>';
+        }
+      } catch (e) {
+        genStatus.innerHTML = '<span class="err">' + e.message + '</span>';
+      }
+      genBtn.textContent = orig;
+      updateGenBtn();
+    });
+
+    function putToR2(url, file, contentType) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', url, true);
+        xhr.setRequestHeader('Content-Type', contentType);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            p1bar.style.width = pct + '%';
+            p1pct.textContent = pct + '%';
+            busy('Uploading to R2', pct);
+          }
+        };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error('R2 upload failed (HTTP ' + xhr.status + ')'));
+        xhr.onerror = () => reject(new Error('Network error during R2 upload'));
+        xhr.send(file);
+      });
+    }
+
+    // browser -> R2 dispatcher: small files use the original single-PUT path
+    // (proven, untouched); big files use chunked multipart with retry + resume.
+    async function doR2Upload(file) {
+      if (file.size < MULTIPART_THRESHOLD) return doSinglePut(file);
+      return doMultipartUpload(file);
+    }
+
+    // --- Small files: single PUT (original path) ---
+    async function doSinglePut(file) {
+      const contentType = file.type || 'application/octet-stream';
+      prog1.classList.add('show');
+      p1label.textContent = 'Uploading to R2';
+      p1bar.style.width = '0%'; p1pct.textContent = '0%';
+      busy('Uploading to R2', 0);
+      const pres = await (await fetch('/api/presign', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType, size: file.size })
+      })).json();
+      if (!pres.url) throw new Error(pres.error || 'Could not get upload URL');
+      await putToR2(pres.url, file, contentType);
+      p1bar.style.width = '100%'; p1pct.textContent = '100%';
+      return pres.key;
+    }
+
+    // --- Big files: chunked multipart upload ---
+    const MP_CONCURRENCY = 4; // parts uploaded in parallel
+    const MP_RETRIES = 3;     // automatic retries per part before pausing
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    function fmtBytes(n) {
+      if (n >= 1024 * 1024 * 1024) return (n / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+      if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(0) + ' MB';
+      return Math.max(1, Math.round(n / 1024)) + ' KB';
+    }
+
+    function mpUpdateBar(state) {
+      let loaded = 0;
+      for (const v of Object.values(state.loaded)) loaded += v;
+      if (loaded > state.file.size) loaded = state.file.size;
+      const pct = Math.round((loaded / state.file.size) * 100);
+      p1bar.style.width = pct + '%';
+      p1pct.textContent = pct + '%';
+      p1label.textContent = 'Uploading to R2 · ' + state.completed.size + '/' + state.partCount + ' parts';
+      busy('Uploading to R2', pct);
+    }
+
+    // PUT one part's bytes to its presigned URL; resolve with the part's ETag.
+    function putPart(url, blob, partNumber, state) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        state.active[partNumber] = xhr;
+        xhr.open('PUT', url, true);
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) { state.loaded[partNumber] = e.loaded; mpUpdateBar(state); }
+        };
+        xhr.onload = () => {
+          delete state.active[partNumber];
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const etag = xhr.getResponseHeader('ETag');
+            if (!etag) return reject(new Error('No ETag returned for part ' + partNumber + ' (check R2 CORS ExposeHeaders includes ETag)'));
+            resolve(etag);
+          } else {
+            reject(new Error('Part ' + partNumber + ' failed (HTTP ' + xhr.status + ')'));
+          }
+        };
+        xhr.onerror = () => { delete state.active[partNumber]; reject(new Error('Network error on part ' + partNumber)); };
+        xhr.onabort = () => { delete state.active[partNumber]; reject(new Error('aborted')); };
+        xhr.send(blob);
+      });
+    }
+
+    async function uploadOnePart(state, n) {
+      const start = (n - 1) * state.partSize;
+      const end = Math.min(start + state.partSize, state.file.size);
+      const blob = state.file.slice(start, end);
+      const sign = await (await fetch('/api/multipart/sign-part', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: state.key, uploadId: state.uploadId, partNumber: n })
+      })).json();
+      if (!sign.url) throw new Error(sign.error || 'Could not sign part ' + n);
+      const etag = await putPart(sign.url, blob, n, state);
+      state.completed.set(n, etag);
+      state.loaded[n] = blob.size; // lock in this part's full byte count
+      mpUpdateBar(state);
+    }
+
+    // Upload every not-yet-done part with bounded concurrency + per-part retry.
+    // Returns 'done' if all parts landed, 'paused' if a part ran out of retries,
+    // 'canceled' if the user canceled.
+    async function runParts(state) {
+      const queue = [];
+      for (let n = 1; n <= state.partCount; n++) {
+        if (!state.completed.has(n)) queue.push(n);
+      }
+      let paused = false;
+
+      async function worker() {
+        while (queue.length && !paused && !state.canceled) {
+          const n = queue.shift();
+          let attempt = 0;
+          while (true) {
+            try { await uploadOnePart(state, n); break; }
+            catch (e) {
+              if (e.message === 'aborted' || state.canceled) return;
+              attempt++;
+              if (attempt > MP_RETRIES) { paused = true; queue.unshift(n); return; }
+              await sleep(800 * attempt); // simple backoff
+            }
+          }
+        }
+      }
+
+      const workers = [];
+      const lanes = Math.min(MP_CONCURRENCY, Math.max(1, queue.length));
+      for (let i = 0; i < lanes; i++) workers.push(worker());
+      await Promise.all(workers);
+
+      if (state.canceled) return 'canceled';
+      return paused ? 'paused' : 'done';
+    }
+
+    function showPaused(state) {
+      // Drop partial progress from parts that didn't finish so the bar reflects
+      // only fully-uploaded parts while we wait.
+      for (const k of Object.keys(state.loaded)) {
+        if (!state.completed.has(Number(k))) delete state.loaded[k];
+      }
+      mpUpdateBar(state);
+      const done = state.completed.size, total = state.partCount;
+      resumeText.textContent = 'Upload paused — ' + done + ' of ' + total + ' parts done (~' +
+        fmtBytes(done * state.partSize) + ' of ' + fmtBytes(state.file.size) +
+        '). Your connection may have dropped. The finished parts are safe.';
+      resumeBox.classList.add('show');
+      if (typeof showStatus === 'function') showStatus();
+      busyDone();
+    }
+
+    async function abortMultipart(state) {
+      try {
+        await fetch('/api/multipart/abort', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: state.key, uploadId: state.uploadId })
+        });
+      } catch (e) { /* best-effort cleanup */ }
+    }
+
+    async function doMultipartUpload(file) {
+      const contentType = file.type || 'application/octet-stream';
+      prog1.classList.add('show');
+      resumeBox.classList.remove('show');
+      p1label.textContent = 'Starting chunked upload';
+      p1bar.style.width = '0%'; p1pct.textContent = '0%';
+      busy('Starting upload', 0);
+
+      const create = await (await fetch('/api/multipart/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType, size: file.size })
+      })).json();
+      if (!create.uploadId) throw new Error(create.error || 'Could not start chunked upload');
+
+      const state = {
+        file, contentType,
+        key: create.key, uploadId: create.uploadId,
+        partSize: create.partSize, partCount: create.partCount,
+        completed: new Map(), loaded: {}, active: {}, canceled: false,
+      };
+      mpUpdateBar(state);
+
+      // Upload, pausing for a manual Resume whenever automatic retries run out.
+      while (true) {
+        const outcome = await runParts(state);
+        if (outcome === 'canceled') { await abortMultipart(state); throw new Error('Upload canceled.'); }
+        if (outcome === 'done') break;
+        // paused: surface a Resume button and wait for the user.
+        showPaused(state);
+        await new Promise((resolve) => {
+          resumeBtn.onclick = () => { resumeBox.classList.remove('show'); p1label.textContent = 'Resuming upload'; busy('Resuming upload', null); resolve(); };
+          cancelLink.onclick = (ev) => { ev.preventDefault(); state.canceled = true; resumeBox.classList.remove('show'); resolve(); };
+        });
+        if (state.canceled) { await abortMultipart(state); throw new Error('Upload canceled.'); }
+      }
+
+      // All parts in — ask R2 to stitch them into the final object.
+      p1label.textContent = 'Finishing upload';
+      busy('Finishing upload', null);
+      const parts = [...state.completed.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([PartNumber, ETag]) => ({ PartNumber, ETag }));
+      const done = await (await fetch('/api/multipart/complete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: state.key, uploadId: state.uploadId, parts })
+      })).json();
+      if (!done.ok) throw new Error(done.error || 'Could not finish chunked upload');
+
+      p1bar.style.width = '100%'; p1pct.textContent = '100%';
+      p1label.textContent = 'Uploaded to R2';
+      return state.key;
+    }
+
+    function pollTranscribe(jobId) {
+      return new Promise((resolve) => {
+        const labels = { fetching: 'Fetching video from R2', extracting: 'Extracting audio', segmenting: 'Splitting audio into parts', transcribing: 'Transcribing with Whisper' };
+        const tick = async () => {
+          try {
+            const job = await (await fetch('/api/transcribe/' + jobId)).json();
+            let label = labels[job.state] || 'Transcribing';
+            if (job.state === 'transcribing' && job.chunkTotal && job.chunkTotal > 1) {
+              label = 'Transcribing part ' + (job.chunkIndex || 1) + ' of ' + job.chunkTotal;
+            }
+            pTlabel.textContent = label;
+            busy(label, null);
+            if (job.state === 'done' || job.state === 'error') return resolve(job);
+          } catch (e) { /* keep polling */ }
+          setTimeout(tick, 1500);
+        };
+        tick();
+      });
+    }
+
+    // R2 object -> Whisper -> metadata; fills the fields, then pauses for review
+    async function runTranscribeFlow(key) {
+      progT.classList.add('show'); pTbar.style.width = ''; pTwrap.classList.add('indet'); pTlabel.textContent = 'Fetching video from R2';
+      busy('Transcribing…', null);
+      const tr = await (await fetch('/api/transcribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      })).json();
+      if (!tr.jobId) throw new Error(tr.error || 'Could not start transcription');
+      const job = await pollTranscribe(tr.jobId);
+      if (job.state === 'error') throw new Error('Transcription failed: ' + (job.error || 'unknown'));
+
+      pTlabel.textContent = 'Writing title & description';
+      busy('Writing title & description', null);
+      const md = await generateMetadata(job.transcript || '', loglineInput.value || '');
+      if (md.error) throw new Error(md.error + (md.raw ? ' [AI replied: ' + String(md.raw).slice(0, 140) + '…]' : ''));
+      titleInput.value = md.title || '';
+      descInput.value = md.description || '';
+      lastSynopsis = md.synopsis || ''; lastRawTitle = md.rawTitle || ''; lastChapters = md.chapters || '';
+
+      pTwrap.classList.remove('indet'); pTbar.style.width = '100%';
+      pTlabel.textContent = 'Done — review below';
+      genStatus.dataset.touched = '1';
+      genStatus.innerHTML = '<span style="color:#34c759">Transcribed and written. Edit the title or description, then Send to YouTube.</span>';
+    }
+
+    function pollTransfer(jobId) {
+      return new Promise((resolve) => {
+        const tick = async () => {
+          try {
+            const job = await (await fetch('/api/transfer/' + jobId)).json();
+            if (job.state === 'uploading' && job.total) {
+              p2wrap.classList.remove('indet');
+              const pct = Math.round((job.bytesSent / job.total) * 100);
+              p2bar.style.width = pct + '%';
+              p2pct.textContent = pct + '%';
+              p2label.textContent = 'Sending to YouTube';
+              busy('Sending to YouTube', pct);
+            } else if (job.state === 'fetching' || job.state === 'starting' || job.state === 'uploading') {
+              p2wrap.classList.add('indet');
+              p2label.textContent = job.state === 'uploading' ? 'Sending to YouTube' : 'Preparing transfer';
+              p2pct.textContent = '';
+              busy(job.state === 'uploading' ? 'Sending to YouTube' : 'Preparing transfer', null);
+            }
+            if (job.state === 'done' || job.state === 'error') return resolve(job);
+          } catch (e) { /* keep polling */ }
+          setTimeout(tick, 1500);
+        };
+        tick();
+      });
+    }
+
+    // R2 -> YouTube transfer + render the result card
+    async function startTransfer(key) {
+      prog2.classList.add('show'); p2wrap.classList.add('indet');
+      p2bar.style.width = ''; p2pct.textContent = '';
+      busy('Preparing transfer', null);
+      const tr = await (await fetch('/api/transfer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, title: titleInput.value || '', description: descInput.value || '' })
+      })).json();
+      if (!tr.jobId) throw new Error(tr.error || 'Could not start transfer');
+      const job = await pollTransfer(tr.jobId);
+      p2wrap.classList.remove('indet');
+      busyDone();
+      result.classList.add('show');
+      if (job.state === 'error') {
+        resultBody.innerHTML = '<p class="err">Transfer failed: ' + (job.error || 'unknown') + '</p>';
+      } else {
+        p2bar.style.width = '100%'; p2pct.textContent = '100%';
+        const priv = job.privacyStatus || 'unknown';
+        resultBody.innerHTML =
+          '<div class="row"><span>Video ID</span><b>' + job.videoId + '</b></div>' +
+          '<div class="row"><span>Privacy</span><span class="badge ' + (priv === 'private' ? 'private' : '') + '">' + priv + '</span></div>' +
+          '<div class="row"><span>Processing</span><b>' + (job.uploadStatus || '—') + '</b></div>' +
+          '<div class="row links"><span>Open in</span><span><a href="' + job.studioUrl + '" target="_blank">Studio</a> · <a href="' + job.watchUrl + '" target="_blank">Watch</a></span></div>';
+        // Thumbnail step becomes available now that the video exists on YouTube.
+        thumbVideoId = job.videoId;
+        lastUploadKey = key;
+        // Sent to YouTube — fold everything above so the thumbnail step is the focus.
+        setCollapsed('secDetails', true);
+        setCollapsed('secReview', true);
+        makeThumbBtn.style.display = 'block';
+      }
+    }
+
+    // ---- Collapsible step sections ----
+    function setCollapsed(id, on) {
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle('collapsed', on);
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.sechead'), function (h) {
+      h.addEventListener('click', function () { h.parentNode.classList.toggle('collapsed'); });
+    });
+    document.getElementById('helpBtn').addEventListener('click', function () {
+      var p = document.getElementById('helpPanel');
+      p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+    });
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.tipbtn');
+      if (!btn) return;
+      e.preventDefault(); e.stopPropagation();
+      var t = document.getElementById(btn.getAttribute('data-tip'));
+      if (!t) return;
+      var open = t.classList.toggle('show');
+      btn.classList.toggle('on', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    function showStatus() {
+      var s = document.getElementById('secStatus');
+      if (s) { s.style.display = 'block'; s.classList.remove('collapsed'); }
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      if (!fileInput.files.length) return;
+      const file = fileInput.files[0];
+      const useWhisper = transcribeReady && !transcriptText.trim() && !titleInput.value.trim();
+
+      uploadBtn.disabled = true;
+      sendBtn.style.display = 'none';
+      result.classList.remove('show'); resultBody.innerHTML = '';
+      progT.classList.remove('show'); prog2.classList.remove('show');
+      resumeBox.classList.remove('show');
+      showStatus();
+
+      try {
+        const key = await doR2Upload(file);
+        setCollapsed('secDetails', true); // video's in — fold the inputs away
+        if (useWhisper) {
+          await runTranscribeFlow(key);
+          busyDone();
+          // Pause for review: hide Upload, reveal Send to YouTube.
+          pendingKey = key;
+          uploadBtn.style.display = 'none';
+          sendBtn.style.display = 'block';
+          sendBtn.disabled = false;
+          var sr = document.getElementById('secReview'); if (sr) sr.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          await startTransfer(key);
+          uploadBtn.disabled = false; updateBtn();
+        }
+      } catch (e) {
+        result.classList.add('show');
+        resultBody.innerHTML = '<p class="err">' + e.message + '</p>';
+        busyDone();
+        resumeBox.classList.remove('show');
+        setCollapsed('secDetails', false); // re-open so they can fix/retry
+        uploadBtn.style.display = 'block';
+        uploadBtn.disabled = false; updateBtn();
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      if (!pendingKey) return;
+      sendBtn.disabled = true;
+      try {
+        await startTransfer(pendingKey);
+        sendBtn.style.display = 'none';
+        uploadBtn.style.display = 'block';
+        uploadBtn.disabled = false; updateBtn();
+      } catch (e) {
+        result.classList.add('show');
+        resultBody.innerHTML = '<p class="err">' + e.message + '</p>';
+        busyDone();
+        sendBtn.disabled = false; // allow retry
+      }
+    });
+
+    // ---- Tabs (rooms) + Template editor ----
+    const tabPublish = document.getElementById('tabPublish');
+    const tabThumbnail = document.getElementById('tabThumbnail');
+    const tabOptions = document.getElementById('tabOptions');
+    const publishView = document.getElementById('publishView');
+    const thumbnailView = document.getElementById('thumbnailView');
+    const optionsView = document.getElementById('optionsView');
+    const thumbPlaceholder = document.getElementById('thumbPlaceholder');
+    const tplTitle = document.getElementById('tplTitle');
+    const tplDesc = document.getElementById('tplDesc');
+    const tplLegend = document.getElementById('tplLegend');
+    const tplSaveBtn = document.getElementById('tplSaveBtn');
+    const tplStatus = document.getElementById('tplStatus');
+
+    let templateLoaded = false;
+    let autoTokens = ['TITLE', 'SYNOPSIS', 'CHAPTERS'];
+    let tplPersisted = false;
+
+    function showTab(which) {
+      const map = { publish: publishView, thumbnail: thumbnailView, options: optionsView };
+      const tabs = { publish: tabPublish, thumbnail: tabThumbnail, options: tabOptions };
+      Object.keys(map).forEach(function (k) {
+        if (map[k]) map[k].style.display = (k === which) ? 'block' : 'none';
+        if (tabs[k]) tabs[k].classList.toggle('active', k === which);
+      });
+      if (which === 'thumbnail' && thumbPlaceholder) {
+        var hasThumb = (typeof thumbCard !== 'undefined' && thumbCard && thumbCard.style.display !== 'none');
+        thumbPlaceholder.style.display = hasThumb ? 'none' : 'block';
+      }
+    }
+    tabPublish.addEventListener('click', function () { showTab('publish'); });
+    tabThumbnail.addEventListener('click', function () { showTab('thumbnail'); });
+    tabOptions.addEventListener('click', function () { showTab('options'); });
+
+    async function loadTemplate() {
+      try {
+        const t = await (await fetch('/api/template')).json();
+        tplTitle.value = t.titleTemplate || '';
+        tplDesc.value = t.descriptionTemplate || '';
+        autoTokens = t.autoTokens || autoTokens;
+        tplPersisted = !!t.persisted;
+        tplLegend.innerHTML = 'Auto-filled for you: ' +
+          autoTokens.map((x) => '<b>{{' + x + '}}</b>').join(', ') +
+          '. Any other slot like <b>{{CREW}}</b> or <b>{{CAST}}</b> stays blank for you to fill on the video before sending (auto-fill from your project comes later).';
+        if (!tplPersisted) {
+          tplStatus.innerHTML = '<span style="color:#ff9500">Saving is off — set DATABASE_URL in Render to make templates permanent. This shows the built-in default for now.</span>';
+          tplSaveBtn.disabled = true;
+        } else {
+          tplStatus.textContent = '';
+          tplSaveBtn.disabled = false;
+        }
+        templateLoaded = true;
+      } catch (e) {
+        tplStatus.innerHTML = '<span class="err">Could not load template: ' + e.message + '</span>';
+      }
+    }
+
+    tplSaveBtn.addEventListener('click', async () => {
+      tplSaveBtn.disabled = true;
+      const orig = tplSaveBtn.textContent; tplSaveBtn.textContent = 'Saving…';
+      try {
+        const res = await (await fetch('/api/template', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titleTemplate: tplTitle.value, descriptionTemplate: tplDesc.value, defaults: {} })
+        })).json();
+        if (res.ok) {
+          tplStatus.innerHTML = '<span style="color:#34c759">Saved. New uploads will use this template.</span>';
+        } else {
+          tplStatus.innerHTML = '<span class="err">' + (res.error || 'Save failed') + '</span>';
+        }
+      } catch (e) {
+        tplStatus.innerHTML = '<span class="err">' + e.message + '</span>';
+      }
+      tplSaveBtn.textContent = orig; tplSaveBtn.disabled = false;
+    });
+
+    // ================= Thumbnail compositor =================
+    var AVATAR_DATA = 'data:image/jpeg;base64,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';
+    var makeThumbBtn = document.getElementById('makeThumbBtn');
+    var thumbCard = document.getElementById('thumbCard');
+    var thumbStatus = document.getElementById('thumbStatus');
+    var setThumbBtn = document.getElementById('setThumbBtn');
+
+    var badgeAvatar = new Image();
+    var avatarReady = false;
+    badgeAvatar.onload = function () { avatarReady = true; drawThumb(); };
+    badgeAvatar.src = AVATAR_DATA;
+
+    var posKeys = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
+    var posIcons = ['\u2196', '\u2191', '\u2197', '\u2190', '\u2022', '\u2192', '\u2199', '\u2193', '\u2198'];
+
+    function ensureFont() {
+      if (montserratReady) return Promise.resolve();
+      if (document.fonts && document.fonts.load) {
+        return document.fonts.load('800 80px Montserrat')
+          .then(function () { montserratReady = true; })
+          .catch(function () { montserratReady = true; });
+      }
+      montserratReady = true; return Promise.resolve();
+    }
+
+    function roundRectPath(ctx, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function measureLine(ctx, str, fs) {
+      ctx.font = '800 ' + fs + 'px Montserrat, sans-serif';
+      var m = ctx.measureText(str);
+      var asc = (m.actualBoundingBoxAscent != null) ? m.actualBoundingBoxAscent : fs * 0.72;
+      var desc = (m.actualBoundingBoxDescent != null) ? m.actualBoundingBoxDescent : fs * 0.2;
+      return { w: m.width, asc: asc, desc: desc };
+    }
+
+    // Pure layout: each line auto-fits its font so its text spans ~targetW (so a
+    // 1-word line renders big, a 4-word line smaller — like the real channel),
+    // then blocks stack and anchor by position. measure(str,fs)->{w,asc,desc}.
+    // Measure a line at a base font, honoring each word's per-word scale (w.s).
+    // Width is linear in baseFs, so the caller can scale baseFs to hit a target width.
+    function measureScaledLine(measure, line, baseFs) {
+      var totalW = 0, asc = 0, desc = 0, sp = measure(' ', baseFs).w;
+      for (var k = 0; k < line.length; k++) {
+        var mw = measure(line[k].t, baseFs * (line[k].s || 1));
+        totalW += mw.w + (k < line.length - 1 ? sp : 0);
+        if (mw.asc > asc) asc = mw.asc;
+        if (mw.desc > desc) desc = mw.desc;
+      }
+      return { w: totalW, asc: asc, desc: desc };
+    }
+    function layoutOverlay(measure, lines, opts) {
+      var blocks = [], totalH = 0;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i], hasScale = false;
+        for (var z = 0; z < line.length; z++) { if ((line[z].s || 1) !== 1) { hasScale = true; break; } }
+        var fs, m;
+        if (!hasScale) {
+          var text = line.map(function (w) { return w.t; }).join(' ');
+          var mMax = measure(text, opts.maxFont);
+          fs = opts.maxFont;
+          if (mMax.w > opts.targetW) fs = Math.max(opts.minFont, opts.maxFont * (opts.targetW / mMax.w));
+          m = measure(text, fs);
+        } else {
+          var mMaxS = measureScaledLine(measure, line, opts.maxFont);
+          fs = opts.maxFont;
+          if (mMaxS.w > opts.targetW) fs = Math.max(opts.minFont, opts.maxFont * (opts.targetW / mMaxS.w));
+          m = measureScaledLine(measure, line, fs);
+        }
+        var blockW = m.w + 2 * opts.padX;
+        var blockH = m.asc + m.desc + 2 * opts.padY;
+        blocks.push({ line: line, fs: fs, asc: m.asc, blockW: blockW, blockH: blockH, x: 0, y: 0 });
+        totalH += blockH + opts.lineGap;
+      }
+      if (blocks.length) totalH -= opts.lineGap;
+      var v = opts.anchor.charAt(0), h = opts.anchor.charAt(1), y;
+      if (v === 't') y = opts.margin;
+      else if (v === 'b') y = opts.H - opts.margin - totalH;
+      else y = (opts.H - totalH) / 2;
+      for (var j = 0; j < blocks.length; j++) {
+        var b = blocks[j];
+        if (h === 'l') b.x = opts.margin;
+        else if (h === 'r') b.x = opts.W - opts.margin - b.blockW;
+        else b.x = (opts.W - b.blockW) / 2;
+        b.y = y;
+        y += b.blockH + opts.lineGap;
+      }
+      return blocks;
+    }
+
+    // Background with zoom + pan. Offsets are clamped so the image always fully
+    // covers the canvas (no black gaps), and the clamped value is written back so
+    // dragging stays bounded. Zoom past the film's own letterbox bars here.
+    // iOS Safari (pre-17) ignores canvas ctx.filter; detect once so we can grade pixels manually instead.
+    var CANVAS_FILTER_OK = (function () {
+      try {
+        var t = document.createElement('canvas'); t.width = t.height = 2;
+        var g = t.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, 2, 2);
+        g.filter = 'brightness(0)'; g.fillStyle = '#fff'; g.fillRect(0, 0, 2, 2);
+        g.filter = 'none';
+        return g.getImageData(0, 0, 1, 1).data[0] < 10;
+      } catch (_) { return false; }
+    })();
+    // Manual saturate -> contrast -> brightness (matches CSS filter order) for browsers without ctx.filter.
+    function applyGradeManual(gctx, W, H) {
+      var s = grade.sat, c = grade.contrast, br = grade.bright;
+      if (s === 1 && c === 1 && br === 1) return;
+      var id = gctx.getImageData(0, 0, W, H), d = id.data;
+      var a0 = 0.213 + 0.787 * s, a1 = 0.715 - 0.715 * s, a2 = 0.072 - 0.072 * s;
+      var b0 = 0.213 - 0.213 * s, b1 = 0.715 + 0.285 * s, b2 = 0.072 - 0.072 * s;
+      var k0 = 0.213 - 0.213 * s, k1 = 0.715 - 0.715 * s, k2 = 0.072 + 0.928 * s;
+      for (var i = 0; i < d.length; i += 4) {
+        var r = d[i], g = d[i + 1], bl = d[i + 2];
+        var nr = a0 * r + a1 * g + a2 * bl, ng = b0 * r + b1 * g + b2 * bl, nb = k0 * r + k1 * g + k2 * bl;
+        nr = (nr - 127.5) * c + 127.5; ng = (ng - 127.5) * c + 127.5; nb = (nb - 127.5) * c + 127.5;
+        nr *= br; ng *= br; nb *= br;
+        d[i] = nr < 0 ? 0 : (nr > 255 ? 255 : nr);
+        d[i + 1] = ng < 0 ? 0 : (ng > 255 ? 255 : ng);
+        d[i + 2] = nb < 0 ? 0 : (nb > 255 ? 255 : nb);
+      }
+      gctx.putImageData(id, 0, 0);
+    }
+    function drawBackground(ctx, img, W, H) {
+      // Fit the frame to the canvas height: landscape/wide fills (crops the sides),
+      // a portrait shows in full with side bars you can zoom into or Extend-fill.
+      var ir = img.width / img.height, baseH = H, baseW = H * ir;
+      var dw = baseW * bgScale, dh = baseH * bgScale;
+      var cx = (W - dw) / 2, cy = (H - dh) / 2;
+      // Free positioning: the image's CENTER may sit anywhere within the canvas,
+      // so you can push the subject to any side and Extend-fill the exposed gap.
+      var dx = Math.max(-dw / 2, Math.min(W - dw / 2, cx + bgOffsetX));
+      var dy = Math.max(-dh / 2, Math.min(H - dh / 2, cy + bgOffsetY));
+      bgOffsetX = dx - cx; bgOffsetY = dy - cy;
+      // Anything the frame doesn't cover (a portrait's bars, or a gap you opened
+      // by panning) gets a blurred, canvas-filling backdrop so it reads intentional.
+      var covers = dx <= 0.5 && dy <= 0.5 && dx + dw >= W - 0.5 && dy + dh >= H - 0.5;
+      if (!covers) {
+        var bf = 1.08, fw = baseW * bf, fh = baseH * bf;
+        if (CANVAS_FILTER_OK) {
+          var prevFilter = ctx.filter;
+          ctx.filter = 'blur(22px) brightness(0.62)';
+          ctx.drawImage(img, (W - fw) / 2, (H - fh) / 2, fw, fh);
+          ctx.filter = prevFilter;
+        } else {
+          ctx.drawImage(img, (W - fw) / 2, (H - fh) / 2, fw, fh);
+        }
+      }
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    // Unsharp-style 3x3 sharpen on the offscreen graded image. Clamped edges.
+    function sharpenImageData(gctx, W, H, amount) {
+      if (amount <= 0) return;
+      var src = gctx.getImageData(0, 0, W, H), s = src.data;
+      var out = gctx.createImageData(W, H), d = out.data;
+      var c = 1 + 6 * amount, e = -1.5 * amount, R = 2;
+      for (var y = 0; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var i = (y * W + x) * 4;
+          var up = ((y >= R ? y - R : 0) * W + x) * 4;
+          var dn = ((y < H - R ? y + R : H - 1) * W + x) * 4;
+          var lf = (y * W + (x >= R ? x - R : 0)) * 4;
+          var rt = (y * W + (x < W - R ? x + R : W - 1)) * 4;
+          for (var ch = 0; ch < 3; ch++) {
+            var v = c * s[i + ch] + e * (s[up + ch] + s[dn + ch] + s[lf + ch] + s[rt + ch]);
+            d[i + ch] = v < 0 ? 0 : (v > 255 ? 255 : v);
+          }
+          d[i + 3] = s[i + 3];
+        }
+      }
+      gctx.putImageData(out, 0, 0);
+    }
+
+    // Build the graded background into an offscreen canvas, reusing the zoom/pan
+    // math in drawBackground. Only recomputed when a grade/zoom/pan control
+    // moves, so text edits stay snappy. Fully driven by `grade` — non-destructive.
+    function rebuildGrade(sharpen) {
+      if (!thumbFrameImg || !thumbFrameImg.complete || !thumbFrameImg.naturalWidth) { gradeReady = false; return; }
+      var gctx = gradeCanvas.getContext('2d');
+      gctx.clearRect(0, 0, 1280, 720);
+      if (CANVAS_FILTER_OK) {
+        gctx.filter = 'saturate(' + grade.sat + ') contrast(' + grade.contrast + ') brightness(' + grade.bright + ')';
+        drawBackground(gctx, thumbFrameImg, 1280, 720);
+        gctx.filter = 'none';
+      } else {
+        drawBackground(gctx, thumbFrameImg, 1280, 720);
+        applyGradeManual(gctx, 1280, 720);
+      }
+      if (sharpen && grade.sharp > 0) sharpenImageData(gctx, 1280, 720, grade.sharp);
+      gradeReady = true;
+    }
+
+    // BLOCKS style: each line on its own black rounded block, white/accent words.
+    function drawOverlayBlocks(ctx, W, H) {
+      if (!overlayLines.length) return;
+      var opts = { W: W, H: H, targetW: W * 0.47 * textScale, maxFont: 108 * textScale, minFont: 26 * textScale, padX: 18, padY: 10, lineGap: 12, margin: 48, anchor: thumbPos };
+      var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
+      for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        roundRectPath(ctx, b.x, b.y, b.blockW, b.blockH, 8);
+        ctx.fillStyle = '#000'; ctx.fill();
+        ctx.font = '800 ' + b.fs + 'px Montserrat, sans-serif';
+        ctx.textBaseline = 'alphabetic';
+        var baseline = b.y + opts.padY + b.asc;
+        var cx = b.x + opts.padX;
+        var spaceW = ctx.measureText(' ').width;
+        for (var k = 0; k < b.line.length; k++) {
+          ctx.font = '800 ' + (b.fs * (b.line[k].s || 1)) + 'px Montserrat, sans-serif';
+          ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
+          ctx.fillText(b.line[k].t, cx, baseline);
+          cx += ctx.measureText(b.line[k].t).width + spaceW;
+        }
+      }
+    }
+
+    // CINEMATIC style: dark gradient rising from the bottom for legibility.
+    function drawScrim(ctx, W, H) {
+      var g = ctx.createLinearGradient(0, H * 0.32, 0, H);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.55, 'rgba(0,0,0,0.45)');
+      g.addColorStop(1, 'rgba(0,0,0,0.9)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // CINEMATIC style: big text, no blocks, soft drop shadow for pop.
+    function drawOverlayClean(ctx, W, H) {
+      if (!overlayLines.length) return;
+      var opts = { W: W, H: H, targetW: W * 0.64 * textScale, maxFont: 170 * textScale, minFont: 34 * textScale, padX: 0, padY: 4, lineGap: 4, margin: 56, anchor: thumbPos };
+      var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
+      for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        ctx.font = '800 ' + b.fs + 'px Montserrat, sans-serif';
+        ctx.textBaseline = 'alphabetic';
+        var baseline = b.y + opts.padY + b.asc;
+        var cx = b.x + opts.padX;
+        var spaceW = ctx.measureText(' ').width;
+        for (var k = 0; k < b.line.length; k++) {
+          var w = b.line[k];
+          ctx.font = '800 ' + (b.fs * (w.s || 1)) + 'px Montserrat, sans-serif';
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.fillText(w.t, cx + Math.max(2, b.fs * 0.02), baseline + Math.max(3, b.fs * 0.03));
+          ctx.fillStyle = w.b ? accentColor : '#ffffff';
+          ctx.fillText(w.t, cx, baseline);
+          cx += ctx.measureText(w.t).width + spaceW;
+        }
+      }
+    }
+
+    function drawBorder(ctx, W, H, thin) {
+      if (borderStyle === 'none') return;
+      var bw = thin ? 11 : 20, inset = thin ? 7 : 12, r = thin ? 28 : 36;
+      var col = borderStyle === 'white' ? '#ffffff'
+              : borderStyle === 'black' ? '#0a0a0a'
+              : borderStyle === 'accent' ? accentColor
+              : '#f45911';
+      roundRectPath(ctx, inset, inset, W - 2 * inset, H - 2 * inset, r);
+      ctx.lineWidth = bw; ctx.strokeStyle = col; ctx.stroke();
+    }
+
+    function drawBadge(ctx, W, H, corner, subtle) {
+      var M = 34, pillH = subtle ? 70 : 84, avD = pillH - (subtle ? 16 : 22), pad = 12;
+      var nameFs = subtle ? 21 : 23;
+      ctx.font = '800 ' + nameFs + 'px Montserrat, sans-serif'; ctx.textBaseline = 'alphabetic';
+      var nameW = Math.max(ctx.measureText('ISAIAH').width, ctx.measureText('JEREMIAH').width);
+      var pillW = pad + avD + 12 + nameW + pad + 4;
+      var x0 = M, y0 = (corner === 'tl') ? M : (H - M - pillH);
+      roundRectPath(ctx, x0, y0, pillW, pillH, 16);
+      ctx.fillStyle = subtle ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.72)'; ctx.fill();
+      if (avatarReady) {
+        var ax = x0 + pad, ay = y0 + (pillH - avD) / 2;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(ax + avD / 2, ay + avD / 2, avD / 2, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(badgeAvatar, ax, ay, avD, avD);
+        ctx.restore();
+        if (subtle) {
+          ctx.beginPath(); ctx.arc(ax + avD / 2, ay + avD / 2, avD / 2, 0, Math.PI * 2);
+          ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+        }
+      }
+      ctx.fillStyle = '#fff';
+      var tx = x0 + pad + avD + 12;
+      ctx.fillText('ISAIAH', tx, y0 + pillH / 2 - 3);
+      ctx.fillText('JEREMIAH', tx, y0 + pillH / 2 + nameFs - 1);
+    }
+
+    // SPOTLIGHT style: radial vignette (bright center, dark edges) + big text
+    // with a soft glow so it reads anywhere. Text centered by default.
+    function drawSpotlight(ctx, W, H) {
+      var g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.22, W / 2, H / 2, Math.max(W, H) * 0.72);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.62, 'rgba(0,0,0,0.32)');
+      g.addColorStop(1, 'rgba(0,0,0,0.84)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    function drawOverlaySpotlight(ctx, W, H) {
+      if (!overlayLines.length) return;
+      var opts = { W: W, H: H, targetW: W * 0.72 * textScale, maxFont: 188 * textScale, minFont: 34 * textScale, padX: 0, padY: 4, lineGap: 6, margin: 56, anchor: thumbPos };
+      var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 16;
+      ctx.textBaseline = 'alphabetic';
+      for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        ctx.font = '800 ' + b.fs + 'px Montserrat, sans-serif';
+        var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
+        for (var k = 0; k < b.line.length; k++) {
+          ctx.font = '800 ' + (b.fs * (b.line[k].s || 1)) + 'px Montserrat, sans-serif';
+          ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
+          ctx.fillText(b.line[k].t, cx, baseline);
+          cx += ctx.measureText(b.line[k].t).width + spaceW;
+        }
+      }
+      ctx.restore();
+    }
+
+    // SIDEBAR style: a dark panel down the left that fades into the image, with
+    // the text stacked inside it. Text left-aligned, vertically centered.
+    function drawSidebarPanel(ctx, W, H) {
+      var fadeEnd = W * 0.54;
+      var g = ctx.createLinearGradient(0, 0, fadeEnd, 0);
+      g.addColorStop(0, 'rgba(10,10,13,0.95)');
+      g.addColorStop(0.74, 'rgba(10,10,13,0.93)');
+      g.addColorStop(1, 'rgba(10,10,13,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, fadeEnd, H);
+    }
+    function drawOverlaySidebar(ctx, W, H) {
+      if (!overlayLines.length) return;
+      var opts = { W: W, H: H, targetW: W * 0.30 * textScale, maxFont: 92 * textScale, minFont: 24 * textScale, padX: 0, padY: 6, lineGap: 8, margin: 54, anchor: thumbPos };
+      var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
+      ctx.textBaseline = 'alphabetic';
+      for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i];
+        ctx.font = '800 ' + b.fs + 'px Montserrat, sans-serif';
+        var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
+        for (var k = 0; k < b.line.length; k++) {
+          ctx.font = '800 ' + (b.fs * (b.line[k].s || 1)) + 'px Montserrat, sans-serif';
+          ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
+          ctx.fillText(b.line[k].t, cx, baseline);
+          cx += ctx.measureText(b.line[k].t).width + spaceW;
+        }
+      }
+    }
+
+    function drawThumb() {
+      var c = document.getElementById('thumbCanvas');
+      if (!c) return;
+      var ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, 1280, 720);
+      if (thumbFrameImg && thumbFrameImg.complete && thumbFrameImg.naturalWidth) {
+        if (!gradeReady) rebuildGrade(true);
+        ctx.drawImage(gradeCanvas, 0, 0);
+      } else { ctx.fillStyle = '#0d0d10'; ctx.fillRect(0, 0, 1280, 720); }
+      if (thumbStyle === 'cinematic') {
+        if (!overlayHidden) { drawScrim(ctx, 1280, 720); drawOverlayClean(ctx, 1280, 720); }
+        drawBorder(ctx, 1280, 720, true);
+        drawBadge(ctx, 1280, 720, 'tl', true);
+      } else if (thumbStyle === 'spotlight') {
+        if (!overlayHidden) { drawSpotlight(ctx, 1280, 720); drawOverlaySpotlight(ctx, 1280, 720); }
+        drawBorder(ctx, 1280, 720, true);
+        drawBadge(ctx, 1280, 720, 'bl', true);
+      } else if (thumbStyle === 'sidebar') {
+        if (!overlayHidden) { drawSidebarPanel(ctx, 1280, 720); drawOverlaySidebar(ctx, 1280, 720); }
+        drawBorder(ctx, 1280, 720, true);
+        drawBadge(ctx, 1280, 720, 'bl', true);
+      } else {
+        if (!overlayHidden) drawOverlayBlocks(ctx, 1280, 720);
+        drawBorder(ctx, 1280, 720, false);
+        drawBadge(ctx, 1280, 720, 'bl', false);
+      }
+    }
+
+    function overlayLinesToText(lines) {
+      return lines.map(function (line) { return line.map(function (w) { return w.t; }).join(' '); }).join('\n');
+    }
+
+    function parseOverlayToLines(text, prev) {
+      var prevFlat = [];
+      (prev || []).forEach(function (line) { line.forEach(function (w) { prevFlat.push(w); }); });
+      var rows = String(text).split('\n'), out = [], gi = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var words = rows[i].trim().split(' ').filter(function (w) { return w.length; }).slice(0, 8);
+        if (!words.length) continue;
+        out.push(words.map(function (t) {
+          var pf = prevFlat[gi];
+          var b = pf ? pf.b : false;
+          var sc = pf ? (pf.s || 1) : 1;
+          gi++;
+          return { t: t, b: b, s: sc };
+        }));
+        if (out.length >= 5) break;
+      }
+      return out;
+    }
+
+    function hexToRgba(hex, a) {
+      var h = hex.replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      var n = parseInt(h, 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    }
+
+    function styleChip(chip, on) {
+      if (on) {
+        chip.style.background = hexToRgba(accentColor, 0.16);
+        chip.style.color = accentColor;
+        chip.style.borderColor = accentColor;
+      } else {
+        chip.style.background = '';
+        chip.style.color = '';
+        chip.style.borderColor = '';
+      }
+    }
+
+    function renderChips() {
+      var box = document.getElementById('wordChips');
+      box.innerHTML = '';
+      overlayLines.forEach(function (line, li) {
+        line.forEach(function (w, wi) {
+          var chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'chip';
+          chip.textContent = w.t;
+          styleChip(chip, w.b);
+          var SENS = 180, SMIN = 0.5, SMAX = 2.2;
+          var downX = 0, downS = 1, lastX = 0, downY = 0, holdT = null, scrubbing = false, moved = false, suppress = false, lastTap = 0;
+          function endScrub() {
+            if (!scrubbing) return;
+            scrubbing = false; suppress = true;
+            chip.classList.remove('scrubbing');
+            chip.textContent = overlayLines[li][wi].t;
+            drawThumb();
+          }
+          chip.addEventListener('pointerdown', function (e) {
+            downX = lastX = e.clientX; downY = e.clientY; downS = overlayLines[li][wi].s || 1;
+            scrubbing = false; moved = false; suppress = false;
+            try { chip.setPointerCapture(e.pointerId); } catch (_) {}
+            clearTimeout(holdT);
+            holdT = setTimeout(function () {
+              if (moved) return;
+              scrubbing = true; downX = lastX;
+              chip.classList.add('scrubbing');
+            }, 240);
+          });
+          chip.addEventListener('pointermove', function (e) {
+            lastX = e.clientX;
+            if (!scrubbing) {
+              if (Math.abs(e.clientX - downX) > 8 || Math.abs(e.clientY - downY) > 10) { moved = true; clearTimeout(holdT); }
+              return;
+            }
+            e.preventDefault();
+            var ns = downS + (e.clientX - downX) / SENS;
+            ns = Math.max(SMIN, Math.min(SMAX, ns));
+            ns = Math.round(ns / 0.05) * 0.05;
+            overlayLines[li][wi].s = ns;
+            chip.textContent = Math.round(ns * 100) + '%';
+            drawThumb();
+          });
+          chip.addEventListener('pointerup', function () {
+            clearTimeout(holdT);
+            if (scrubbing) endScrub();
+            else if (moved) suppress = true;
+          });
+          chip.addEventListener('pointercancel', function () { clearTimeout(holdT); endScrub(); });
+          chip.addEventListener('click', function (e) {
+            if (suppress) { suppress = false; e.preventDefault(); e.stopPropagation(); return; }
+            overlayLines[li][wi].b = !overlayLines[li][wi].b;
+            styleChip(chip, overlayLines[li][wi].b);
+            var now = Date.now();
+            if (now - lastTap < 320) { overlayLines[li][wi].s = 1; lastTap = 0; }
+            else { lastTap = now; }
+            drawThumb();
+          });
+          box.appendChild(chip);
+        });
+      });
+    }
+
+    function buildPosGrid() {
+      var grid = document.getElementById('posGrid');
+      grid.innerHTML = '';
+      posKeys.forEach(function (k, i) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = posIcons[i];
+        btn.className = (k === thumbPos ? 'sel' : '');
+        btn.addEventListener('click', function () {
+          thumbPos = k;
+          Array.prototype.forEach.call(grid.children, function (c) { c.classList.remove('sel'); });
+          btn.classList.add('sel');
+          drawThumb();
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    var accentColors = ['#0eaaf5', '#00e5ff', '#30d158', '#a3e635', '#ffd60a', '#ff9f0a', '#ff6b35', '#ff453a', '#ff2d92', '#c084fc', '#7c4dff', '#14b8a6'];
+    function buildAccentRow() {
+      var row = document.getElementById('accentRow');
+      row.innerHTML = '';
+      accentColors.forEach(function (col) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.background = col;
+        btn.className = (col === accentColor ? 'sel' : '');
+        btn.addEventListener('click', function () {
+          accentColor = col;
+          Array.prototype.forEach.call(row.children, function (c) { c.classList.remove('sel'); });
+          btn.classList.add('sel');
+          renderChips();
+          drawThumb();
+        });
+        row.appendChild(btn);
+      });
+    }
+
+    function applyFrame(src, selEl) {
+      var img = new Image();
+      img.onload = function () {
+        thumbFrameImg = img;
+        bgScale = 1; bgOffsetX = 0; bgOffsetY = 0; syncPosDials(); // fresh frame starts at cover
+        var zv = document.getElementById('zoomVal'); if (zv) zv.textContent = '1.0\u00d7';
+        rebuildGrade(true);
+        drawThumb();
+      };
+      img.src = src;
+      var strip = document.getElementById('frameStrip');
+      Array.prototype.forEach.call(strip.children, function (c) { c.classList.remove('sel'); });
+      if (selEl) selEl.classList.add('sel');
+    }
+
+    function pollFrames(jobId) {
+      return new Promise(function (resolve) {
+        var tick = function () {
+          fetch('/api/thumb/frames/' + jobId).then(function (r) { return r.json(); }).then(function (job) {
+            if (job.state === 'done' || job.state === 'error') return resolve(job);
+            setTimeout(tick, 1500);
+          }).catch(function () { setTimeout(tick, 1500); });
+        };
+        tick();
+      });
+    }
+
+    // Build a simple overlay from the title/filename — used when the AI overlay
+    // call errors or returns nothing, so the text box is never left blank.
+    function fallbackOverlay() {
+      var src = (lastRawTitle || titleInput.value || '').trim();
+      if (!src) {
+        var fn = (fileInput.files[0] && fileInput.files[0].name) || '';
+        var dot = fn.lastIndexOf('.'); if (dot > 0) fn = fn.slice(0, dot);
+        src = fn.split('_').join(' ').split('-').join(' ').trim();
+      }
+      if (!src) return [];
+      var words = src.split(' ').filter(function (w) { return w.length; }).slice(0, 6);
+      if (!words.length) return [];
+      var toLine = function (arr) { return arr.map(function (w) { return { t: w.toUpperCase(), b: false }; }); };
+      var mid = Math.ceil(words.length / 2);
+      var l1 = words.slice(0, mid), l2 = words.slice(mid);
+      return l2.length ? [toLine(l1), toLine(l2)] : [toLine(l1)];
+    }
+
+    async function startThumbFlow() {
+      thumbCard.style.display = 'block';
+      frameRound = 0; setThumbTitleView();
+      if (typeof thumbPlaceholder !== 'undefined' && thumbPlaceholder) thumbPlaceholder.style.display = 'none';
+      showTab('thumbnail');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      thumbStatus.innerHTML = '<span style="color:var(--text-soft)">Pulling frames from your film and writing the overlay…</span>';
+      setThumbBtn.disabled = true;
+      await ensureFont();
+      buildPosGrid();
+      buildAccentRow();
+      drawThumb();
+
+      var textP = fetch('/api/thumb/text', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: lastRawTitle || titleInput.value || '', synopsis: lastSynopsis || descInput.value || '' })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res && res.lines && res.lines.length) {
+          overlayLines = res.lines.map(function (line) { return line.map(function (w) { return { t: String(w.t || ''), b: !!w.b }; }); });
+        } else {
+          // AI gave nothing (or errored) — drop in a starter from the title so it's never blank.
+          overlayLines = fallbackOverlay();
+          if (res && res.error) {
+            thumbStatus.innerHTML = '<span style="color:#ff9f0a">Couldn\'t auto-write the text (' + res.error + '). Added a starter from your title — edit it below.</span>';
+          }
+        }
+        document.getElementById('overlayText').value = overlayLinesToText(overlayLines);
+        renderChips();
+        drawThumb();
+      }).catch(function () {
+        overlayLines = fallbackOverlay();
+        document.getElementById('overlayText').value = overlayLinesToText(overlayLines);
+        renderChips();
+        drawThumb();
+      });
+
+      frameStripLoading();
+      var framesP = fetch('/api/thumb/frames', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: lastUploadKey })
+      }).then(function (r) { return r.json(); }).then(function (start) {
+        if (!start.jobId) throw new Error(start.error || 'Could not start frame grab');
+        return pollFrames(start.jobId);
+      }).then(function (job) {
+        if (job.state === 'error' || !job.frames || !job.frames.length) {
+          document.getElementById('frameStrip').innerHTML = '';
+          thumbStatus.innerHTML = '<span style="color:#ff9f0a">Couldn\'t auto-grab frames (' + (job.error || 'none') + '). Upload your own still below.</span>';
+          return;
+        }
+        var strip = document.getElementById('frameStrip');
+        strip.innerHTML = '';
+        job.frames.forEach(function (src, i) {
+          var im = document.createElement('img');
+          im.src = src;
+          im.addEventListener('click', function () { applyFrame(src, im); });
+          strip.appendChild(im);
+          if (i === 0) applyFrame(src, im);
+        });
+      }).catch(function (e) {
+        thumbStatus.innerHTML = '<span style="color:#ff9f0a">' + e.message + '</span>';
+      });
+
+      await Promise.all([textP, framesP]);
+      if (thumbStatus.textContent.indexOf("Couldn't") === -1) {
+        thumbStatus.innerHTML = '<span style="color:#34c759">Ready — tweak anything, then set it.</span>';
+      }
+      setThumbBtn.disabled = false;
+    }
+
+    makeThumbBtn.addEventListener('click', function () {
+      makeThumbBtn.disabled = true;
+      setCollapsed('secStatus', true); // fold the upload status away — thumbnail is the focus now
+      startThumbFlow().catch(function () { setCollapsed('secStatus', false); }).then(function () { makeThumbBtn.disabled = false; });
+    });
+
+    // ---- AI Enhance ----
+    document.getElementById('enhanceBtn').addEventListener('click', function () {
+      var p = document.getElementById('enhancePanel');
+      p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+    });
+    // Current frame as a JPEG data URL (capped to 1536px long side to limit cost).
+    function currentFrameJpeg() {
+      if (!thumbFrameImg || !thumbFrameImg.naturalWidth) return null;
+      var iw = thumbFrameImg.naturalWidth, ih = thumbFrameImg.naturalHeight;
+      var scale = Math.min(1, 1536 / Math.max(iw, ih));
+      var w = Math.round(iw * scale), h = Math.round(ih * scale);
+      var tc = document.createElement('canvas'); tc.width = w; tc.height = h;
+      tc.getContext('2d').drawImage(thumbFrameImg, 0, 0, w, h);
+      return tc.toDataURL('image/jpeg', 0.92);
+    }
+    function setEnhBusy(on) {
+      Array.prototype.forEach.call(document.querySelectorAll('.enhopt'), function (b) { b.disabled = on; });
+    }
+    // ---- Extend background: fill empty edges with AI, keep your exact framing ----
+    // Composes the frame at the model's 3:2 size with the empty edges masked for
+    // fill, then crops the center 16:9 back out, so the subject lands exactly where
+    // you placed it and the bars are gone — no re-framing needed.
+    function buildExtendInputs() {
+      if (!thumbFrameImg || !thumbFrameImg.naturalWidth) return null;
+      var W = 1280, H = 720, MW = 1536, MH = 1024;
+      var BH = Math.round(MW * H / W), BY = Math.round((MH - BH) / 2), k = MW / W;
+      var img = thumbFrameImg;
+      var ir = img.width / img.height, baseH = H, baseW = H * ir;
+      var dw = baseW * bgScale, dh = baseH * bgScale;
+      var cx = (W - dw) / 2, cy = (H - dh) / 2;
+      var dx = Math.max(-dw / 2, Math.min(W - dw / 2, cx + bgOffsetX));
+      var dy = Math.max(-dh / 2, Math.min(H - dh / 2, cy + bgOffsetY));
+      var coversX = dx <= 0.5 && dx + dw >= W - 0.5;
+      var coversY = dy <= 0.5 && dy + dh >= H - 0.5;
+      if (coversX && coversY) return { full: true };
+      var rx = dx * k, ry = BY + dy * k, rw = dw * k, rh = dh * k;
+      var ic = document.createElement('canvas'); ic.width = MW; ic.height = MH;
+      var ictx = ic.getContext('2d');
+      ictx.fillStyle = '#000'; ictx.fillRect(0, 0, MW, MH);
+      ictx.drawImage(img, rx, ry, rw, rh);
+      var mc = document.createElement('canvas'); mc.width = MW; mc.height = MH;
+      var mctx = mc.getContext('2d');
+      mctx.clearRect(0, 0, MW, MH);
+      mctx.fillStyle = '#ffffff'; mctx.fillRect(rx, ry, rw, rh);
+      return { image: ic.toDataURL('image/jpeg', 0.92), mask: mc.toDataURL('image/png') };
+    }
+    function runExtend() {
+      var es = document.getElementById('enhanceStatus');
+      var inp = buildExtendInputs();
+      if (!inp) { es.innerHTML = '<span class="err">Pick a frame first.</span>'; return; }
+      if (inp.full) { es.innerHTML = '<span style="color:#ff9f0a">This frame already fills the thumbnail — nothing to extend. Zoom out first to expose the edges.</span>'; return; }
+      es.innerHTML = '<span style="color:var(--text-soft)">Extending the background… 15–45 seconds.</span>';
+      setEnhBusy(true); busy('Extending…', null);
+      fetch('/api/thumb/enhance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'extendbg', imageBase64: inp.image, maskBase64: inp.mask,
+          prompt: document.getElementById('enhancePrompt').value || '',
+          title: titleInput.value || '', synopsis: lastSynopsis || descInput.value || ''
+        })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res.error) { es.innerHTML = '<span class="err">' + res.error + '</span>'; return; }
+        if (!res.image) { es.innerHTML = '<span class="err">No image came back — try again.</span>'; return; }
+        var out = new Image();
+        out.onload = function () {
+          var MW = 1536, MH = 1024, BH = Math.round(MW * 720 / 1280), BY = Math.round((MH - BH) / 2);
+          var fc = document.createElement('canvas'); fc.width = 1280; fc.height = 720;
+          fc.getContext('2d').drawImage(out, 0, BY, MW, BH, 0, 0, 1280, 720);
+          var framedSrc = fc.toDataURL('image/png');
+          var framed = new Image();
+          framed.onload = function () {
+            thumbFrameImg = framed;
+            bgScale = 1; bgOffsetX = 0; bgOffsetY = 0; syncPosDials();
+            var zv = document.getElementById('zoomVal'); if (zv) zv.textContent = '1.0\u00d7';
+            rebuildGrade(true); drawThumb();
+            var strip = document.getElementById('frameStrip');
+            var im = document.createElement('img'); im.src = framedSrc;
+            im.addEventListener('click', function () { applyFrame(framedSrc, im); });
+            strip.insertBefore(im, strip.firstChild);
+            es.innerHTML = '<span style="color:#34c759">Done — edges filled, your framing kept. Not feeling it? Tap any other frame to go back.</span>';
+          };
+          framed.src = framedSrc;
+        };
+        out.src = res.image;
+      }).catch(function (e) { es.innerHTML = '<span class="err">' + e.message + '</span>'; })
+        .then(function () { setEnhBusy(false); busyDone(); });
+    }
+    function runEnhance(mode) {
+      if (mode === 'extendbg') { runExtend(); return; }
+      var es = document.getElementById('enhanceStatus');
+      var needImg = (mode !== 'genbg');
+      var img64 = needImg ? currentFrameJpeg() : null;
+      if (needImg && !img64) { es.innerHTML = '<span class="err">Pick a frame first.</span>'; return; }
+      es.innerHTML = '<span style="color:var(--text-soft)">Enhancing… this can take 15–45 seconds.</span>';
+      setEnhBusy(true);
+      busy('Enhancing…', null);
+      fetch('/api/thumb/enhance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: mode, imageBase64: img64,
+          prompt: document.getElementById('enhancePrompt').value || '',
+          title: titleInput.value || '',
+          synopsis: lastSynopsis || descInput.value || ''
+        })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res.error) { es.innerHTML = '<span class="err">' + res.error + '</span>'; return; }
+        if (res.image) {
+          var strip = document.getElementById('frameStrip');
+          var im = document.createElement('img');
+          im.src = res.image;
+          im.addEventListener('click', function () { applyFrame(res.image, im); });
+          strip.insertBefore(im, strip.firstChild);
+          applyFrame(res.image, im);
+          es.innerHTML = '<span style="color:#34c759">Done — added to your frames. Not feeling it? Tap any other frame to go back.</span>';
+        } else {
+          es.innerHTML = '<span class="err">No image came back — try again.</span>';
+        }
+      }).catch(function (e) { es.innerHTML = '<span class="err">' + e.message + '</span>'; })
+        .then(function () { setEnhBusy(false); busyDone(); });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.enhopt'), function (b) {
+      b.addEventListener('click', function () { runEnhance(b.getAttribute('data-mode')); });
+    });
+
+    document.getElementById('overlayText').addEventListener('input', function (e) {
+      overlayLines = parseOverlayToLines(e.target.value, overlayLines);
+      renderChips();
+      drawThumb();
+    });
+
+    document.getElementById('frameUpload').addEventListener('change', function (e) {
+      var f = e.target.files[0]; if (!f) return;
+      applyFrame(URL.createObjectURL(f), null);
+    });
+
+    // Drag the background image to reposition it.
+    (function () {
+      var canvas = document.getElementById('thumbCanvas');
+      var dragging = false, sx0 = 0, sy0 = 0, ox0 = 0, oy0 = 0, lockAxis = null;
+      canvas.addEventListener('pointerdown', function (e) {
+        if (!thumbFrameImg) return;
+        dragging = true; lockAxis = null;
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
+        sx0 = e.clientX; sy0 = e.clientY; ox0 = bgOffsetX; oy0 = bgOffsetY;
+      });
+      canvas.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var k = canvas.width / canvas.clientWidth;
+        var dxp = (e.clientX - sx0) * k, dyp = (e.clientY - sy0) * k;
+        // Hold Shift/Ctrl (desktop) to lock to one axis — the dominant direction
+        // latches, so you slide straight and any off-axis drift is undone.
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          if (!lockAxis) lockAxis = Math.abs(dxp) >= Math.abs(dyp) ? 'x' : 'y';
+        } else { lockAxis = null; }
+        if (lockAxis === 'x') dyp = 0; else if (lockAxis === 'y') dxp = 0;
+        bgOffsetX = Math.max(-640, Math.min(640, ox0 + dxp));
+        bgOffsetY = Math.max(-360, Math.min(360, oy0 + dyp));
+        syncPosDials();
+        scheduleGrade(false);
+      });
+      function end() { var was = dragging; dragging = false; lockAxis = null; if (was) scheduleGrade(true); }
+      canvas.addEventListener('pointerup', end);
+      canvas.addEventListener('pointercancel', end);
+    })();
+
+    // Tap (not drag) the preview to view it larger in a lightbox.
+    function openThumbLightbox() {
+      var c = document.getElementById('thumbCanvas');
+      if (!c) return;
+      try { document.getElementById('lightboxImg').src = c.toDataURL('image/jpeg', 0.95); }
+      catch (e) { return; }
+      document.getElementById('thumbLightbox').classList.add('show');
+    }
+    (function () {
+      var canvas = document.getElementById('thumbCanvas');
+      var dx0 = 0, dy0 = 0, down = false;
+      canvas.addEventListener('pointerdown', function (e) { down = true; dx0 = e.clientX; dy0 = e.clientY; });
+      canvas.addEventListener('pointerup', function (e) {
+        if (!down) return; down = false;
+        if (Math.abs(e.clientX - dx0) + Math.abs(e.clientY - dy0) <= 6) openThumbLightbox();
+      });
+      canvas.addEventListener('pointercancel', function () { down = false; });
+      var lb = document.getElementById('thumbLightbox');
+      if (lb) {
+        lb.addEventListener('click', function () { lb.classList.remove('show'); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') lb.classList.remove('show'); });
+      }
+    })();
+
+    function gradeReadout() {
+      document.getElementById('zoomVal').textContent = bgScale.toFixed(1) + '\u00d7';
+      document.getElementById('sizeVal').textContent = Math.round(textScale * 100) + '%';
+      document.getElementById('satVal').textContent = Math.round(grade.sat * 100) + '%';
+      document.getElementById('conVal').textContent = Math.round(grade.contrast * 100) + '%';
+      document.getElementById('briVal').textContent = Math.round(grade.bright * 100) + '%';
+      document.getElementById('shaVal').textContent = Math.round(grade.sharp * 100) + '%';
+    }
+
+    // Scrub dial (MSM-style): drag sideways to change the value, double-tap to
+    // reset. ~200px of travel covers the full range.
+    function makeDial(id, opts) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var valEl = el.querySelector('.dv');
+      function show() { valEl.textContent = opts.fmt(opts.get()); }
+      var dragging = false, sx = 0, base = 0, moved = false, lastTap = 0;
+      el.addEventListener('pointerdown', function (e) {
+        dragging = true; moved = false; sx = e.clientX; base = opts.get();
+        try { el.setPointerCapture(e.pointerId); } catch (_) { }
+        e.preventDefault();
+      });
+      el.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var dx = e.clientX - sx;
+        if (Math.abs(dx) > 2) moved = true;
+        var v = base + (dx / 200) * (opts.max - opts.min);
+        v = Math.max(opts.min, Math.min(opts.max, v));
+        v = Math.round(v / opts.step) * opts.step;
+        opts.set(v); show(); if (opts.onInput) opts.onInput();
+      });
+      function end() {
+        if (!dragging) return;
+        dragging = false;
+        if (!moved) {
+          var now = Date.now();
+          if (now - lastTap < 320) { lastTap = 0; opts.set(opts.def); show(); if (opts.onInput) opts.onInput(); }
+          else { lastTap = now; }
+        }
+        if (opts.onChange) opts.onChange();
+      }
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+      show();
+    }
+
+    var pct = function (v) { return Math.round(v * 100) + '%'; };
+    function posFmt(v) { v = Math.round(v); return v > 0 ? '+' + v : '' + v; }
+    function syncPosDials() {
+      var px = document.getElementById('posXVal'); if (px) px.textContent = posFmt(Math.max(-100, Math.min(100, bgOffsetX / 6.4)));
+      var py = document.getElementById('posYVal'); if (py) py.textContent = posFmt(Math.max(-100, Math.min(100, bgOffsetY / 3.6)));
+    }
+    var liveGrade = function () { scheduleGrade(false); }, finalGrade = function () { scheduleGrade(true); };
+    makeDial('dZoom', { get: function () { return bgScale; }, set: function (v) { bgScale = v; }, min: 0.3, max: 3.5, step: 0.05, def: 1, fmt: function (v) { return v.toFixed(1) + '\u00d7'; }, onInput: liveGrade, onChange: finalGrade });
+    makeDial('dPosX', { get: function () { return bgOffsetX / 6.4; }, set: function (v) { bgOffsetX = v * 6.4; }, min: -100, max: 100, step: 1, def: 0, fmt: posFmt, onInput: liveGrade, onChange: finalGrade });
+    makeDial('dPosY', { get: function () { return bgOffsetY / 3.6; }, set: function (v) { bgOffsetY = v * 3.6; }, min: -100, max: 100, step: 1, def: 0, fmt: posFmt, onInput: liveGrade, onChange: finalGrade });
+    makeDial('dSat', { get: function () { return grade.sat; }, set: function (v) { grade.sat = v; }, min: 0, max: 2, step: 0.05, def: 1, fmt: pct, onInput: liveGrade, onChange: finalGrade });
+    makeDial('dCon', { get: function () { return grade.contrast; }, set: function (v) { grade.contrast = v; }, min: 0.5, max: 1.8, step: 0.05, def: 1, fmt: pct, onInput: liveGrade, onChange: finalGrade });
+    makeDial('dBri', { get: function () { return grade.bright; }, set: function (v) { grade.bright = v; }, min: 0.5, max: 1.5, step: 0.05, def: 1, fmt: pct, onInput: liveGrade, onChange: finalGrade });
+    makeDial('dSha', { get: function () { return grade.sharp; }, set: function (v) { grade.sharp = v; }, min: 0, max: 1, step: 0.05, def: 0, fmt: pct, onInput: finalGrade, onChange: finalGrade });
+    makeDial('dSize', { get: function () { return textScale; }, set: function (v) { textScale = v; }, min: 0.7, max: 1.4, step: 0.05, def: 1, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+
+    // Unified reset for all image adjustments (zoom, pan, and grade).
+    document.getElementById('resetGradeBtn').addEventListener('click', function () {
+      bgScale = 1; bgOffsetX = 0; bgOffsetY = 0; syncPosDials();
+      grade = { sat: 1, contrast: 1, bright: 1, sharp: 0 };
+      gradeReadout(); scheduleGrade(true);
+    });
+
+    (function () {
+      var seg = document.getElementById('styleToggle');
+      Array.prototype.forEach.call(seg.querySelectorAll('button'), function (btn) {
+        btn.addEventListener('click', function () {
+          thumbStyle = btn.getAttribute('data-style');
+          Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { b.classList.remove('sel'); });
+          btn.classList.add('sel');
+          var defPos = { cinematic: 'bl', spotlight: 'mc', sidebar: 'ml', blocks: 'tr' };
+          thumbPos = defPos[thumbStyle] || 'bl'; // sensible default per style
+          buildPosGrid();
+          drawThumb();
+        });
+      });
+    })();
+
+    (function () {
+      var seg = document.getElementById('borderToggle');
+      if (!seg) return;
+      Array.prototype.forEach.call(seg.querySelectorAll('button'), function (btn) {
+        btn.addEventListener('click', function () {
+          borderStyle = btn.getAttribute('data-border');
+          Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { b.classList.remove('sel'); });
+          btn.classList.add('sel');
+          drawThumb();
+        });
+      });
+    })();
+
+    setThumbBtn.addEventListener('click', function () {
+      if (!thumbVideoId) return;
+      var c = document.getElementById('thumbCanvas');
+      var data = c.toDataURL('image/jpeg', 0.92);
+      setThumbBtn.disabled = true;
+      var orig = setThumbBtn.textContent; setThumbBtn.textContent = 'Setting…';
+      fetch('/api/thumb/set', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId: thumbVideoId, imageBase64: data })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res.ok) thumbStatus.innerHTML = '<span style="color:#34c759">Thumbnail set on your video \u2713</span>';
+        else thumbStatus.innerHTML = '<span class="err">' + (res.error || 'Failed to set thumbnail') + '</span>';
+      }).catch(function (e) { thumbStatus.innerHTML = '<span class="err">' + e.message + '</span>'; })
+        .then(function () { setThumbBtn.textContent = orig; setThumbBtn.disabled = false; });
+    });
+
+    document.getElementById('downloadThumbBtn').addEventListener('click', function () {
+      var c = document.getElementById('thumbCanvas');
+      var a = document.createElement('a');
+      a.href = c.toDataURL('image/jpeg', 0.95);
+      a.download = 'thumbnail.jpg';
+      a.click();
+    });
+
+    // ---- Magic Story Maker project bridge ----
+    var msmProjectsLoaded = false;
+    function loadMsmProjects() {
+      if (msmProjectsLoaded) return;
+      msmProjectsLoaded = true;
+      var row = document.getElementById('msmRow');
+      var sel = document.getElementById('msmProject');
+      fetch('/api/msm/projects').then(function (r) { return r.json(); }).then(function (res) {
+        if (!res.projects || !res.projects.length) return;
+        res.projects.forEach(function (p) {
+          var o = document.createElement('option');
+          o.value = p.id; o.textContent = p.title;
+          sel.appendChild(o);
+        });
+        row.style.display = 'block';
+      }).catch(function () { });
+    }
+
+    function fmtCredits(list, isCrew) {
+      return (list || []).map(function (x) {
+        var name = (x.name || '').trim(), role = (x.role || '').trim();
+        if (!name) return '';
+        if (!role) return name;
+        return isCrew ? (role + ' \u2014 ' + name) : (name + ' as ' + role);
+      }).filter(function (s) { return s; }).join('\n');
+    }
+
+    // Refill the description with the chosen credits — no AI call, title unchanged.
+    function recomposeWithCredits() {
+      if (!lastRawTitle && !lastSynopsis) return; // nothing generated yet; applies on Generate
+      fetch('/api/recompose', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawTitle: lastRawTitle, synopsis: lastSynopsis, chapters: lastChapters, castText: selectedCastText, crewText: selectedCrewText })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res.title) titleInput.value = res.title;
+        if (res.description != null) descInput.value = res.description;
+      }).catch(function () { });
+    }
+
+    (function () {
+      var sel = document.getElementById('msmProject');
+      var status = document.getElementById('msmStatus');
+      sel.addEventListener('change', function () {
+        var id = sel.value;
+        if (!id) {
+          selectedCastText = ''; selectedCrewText = ''; status.textContent = '';
+          recomposeWithCredits();
+          return;
+        }
+        status.innerHTML = '<span style="color:var(--text-soft)">Pulling cast &amp; crew\u2026</span>';
+        fetch('/api/msm/credits?id=' + encodeURIComponent(id)).then(function (r) { return r.json(); }).then(function (res) {
+          if (res.error) { status.innerHTML = '<span class="err">' + res.error + '</span>'; return; }
+          selectedCastText = fmtCredits(res.cast, false);
+          selectedCrewText = fmtCredits(res.crew, true);
+          var nc = (res.cast || []).length, nr = (res.crew || []).length;
+          status.innerHTML = '<span style="color:#34c759">Pulled ' + nc + ' cast, ' + nr + ' crew from ' + (res.title || 'project') + '. They\'ll fill the description.</span>';
+          recomposeWithCredits();
+        }).catch(function (e) { status.innerHTML = '<span class="err">' + e.message + '</span>'; });
+      });
+    })();
+
+    // ---- Regenerate cluster: new title / new on-screen text / more frames ----
+    function setThumbTitleView() {
+      var v = document.getElementById('thumbTitleView');
+      if (v) v.textContent = (titleInput.value || '').trim() || '\u2014';
+    }
+    titleInput.addEventListener('input', setThumbTitleView);
+    function frameStripLoading(msg) {
+      var strip = document.getElementById('frameStrip');
+      if (strip) strip.innerHTML = '<div class="framespin"><span class="sp"></span>' + (msg || 'Grabbing frames...') + '</div>';
+    }
+    function setFrameStrip(frames) {
+      var strip = document.getElementById('frameStrip');
+      strip.innerHTML = '';
+      frames.forEach(function (src, i) {
+        var im = document.createElement('img');
+        im.src = src;
+        im.addEventListener('click', function () { applyFrame(src, im); });
+        strip.appendChild(im);
+        if (i === 0) applyFrame(src, im);
+      });
+    }
+    function titleSeed() {
+      var seed = (lastSynopsis || lastRawTitle || titleInput.value || '').trim();
+      if (!seed) {
+        var fn = (fileInput.files[0] && fileInput.files[0].name) || '';
+        var dot = fn.lastIndexOf('.'); if (dot > 0) fn = fn.slice(0, dot);
+        seed = fn.split('_').join(' ').split('-').join(' ').trim();
+      }
+      return seed;
+    }
+    var nTitleBtn = document.getElementById('newTitleBtn');
+    if (nTitleBtn) nTitleBtn.addEventListener('click', function () {
+      var seed = titleSeed();
+      if (!seed) { thumbStatus.innerHTML = '<span style="color:#ff9f0a">Nothing to base a title on yet.</span>'; return; }
+      nTitleBtn.disabled = true; busy('Writing new title\u2026', null);
+      generateMetadata('', seed).then(function (md) {
+        if (md && md.title) { titleInput.value = md.title; lastRawTitle = md.rawTitle || lastRawTitle; setThumbTitleView(); }
+      }).catch(function () { }).then(function () { busyDone(); nTitleBtn.disabled = false; });
+    });
+    var toggleTextBtn = document.getElementById('toggleTextBtn');
+    if (toggleTextBtn) toggleTextBtn.addEventListener('click', function () {
+      overlayHidden = !overlayHidden;
+      this.classList.toggle('off', overlayHidden);
+      this.title = overlayHidden ? 'Show text' : 'Hide text';
+      this.setAttribute('aria-label', overlayHidden ? 'Show text' : 'Hide text');
+      drawThumb();
+    });
+    var nTextBtn = document.getElementById('newTextBtn');
+    if (nTextBtn) nTextBtn.addEventListener('click', function () {
+      nTextBtn.disabled = true; busy('Writing new text\u2026', null);
+      fetch('/api/thumb/text', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: lastRawTitle || titleInput.value || '', synopsis: lastSynopsis || descInput.value || '' })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        if (res && res.lines && res.lines.length) {
+          overlayLines = res.lines.map(function (line) { return line.map(function (w) { return { t: String(w.t || ''), b: !!w.b }; }); });
+        } else { overlayLines = fallbackOverlay(); }
+        document.getElementById('overlayText').value = overlayLinesToText(overlayLines);
+        renderChips(); drawThumb();
+      }).catch(function () { }).then(function () { busyDone(); nTextBtn.disabled = false; });
+    });
+    var moreFramesBtn = document.getElementById('moreFramesBtn');
+    if (moreFramesBtn) moreFramesBtn.addEventListener('click', function () {
+      if (!lastUploadKey) { thumbStatus.innerHTML = '<span style="color:#ff9f0a">No film loaded to pull frames from.</span>'; return; }
+      moreFramesBtn.disabled = true; busy('Pulling new frames\u2026', null);
+      frameStripLoading('Grabbing new frames...');
+      frameRound++;
+      fetch('/api/thumb/frames', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: lastUploadKey, round: frameRound })
+      }).then(function (r) { return r.json(); }).then(function (start) {
+        if (!start.jobId) throw new Error(start.error || 'Could not start frame grab');
+        return pollFrames(start.jobId);
+      }).then(function (job) {
+        if (job.state === 'error' || !job.frames || !job.frames.length) {
+          document.getElementById('frameStrip').innerHTML = '';
+          thumbStatus.innerHTML = '<span style="color:#ff9f0a">Couldn\'t grab more frames (' + (job.error || 'none') + ').</span>'; return;
+        }
+        setFrameStrip(job.frames);
+        thumbStatus.innerHTML = '<span style="color:#34c759">New frames in \u2014 pick one.</span>';
+      }).catch(function (e) { thumbStatus.innerHTML = '<span style="color:#ff9f0a">' + e.message + '</span>'; })
+        .then(function () { busyDone(); moreFramesBtn.disabled = false; });
+    });
+
+    // ---- Theme + accent palette (ported from MSM, persisted in localStorage) ----
+    (function () {
+      var ACCENTS = [
+        { a:"#2f80ff", g:["#5fa0ff","#2f80ff","#4fc3f7"] },
+        { a:"#7c4dff", g:["#9a78ff","#7c4dff","#c77dff"] },
+        { a:"#0e9494", g:["#2bc4b4","#0e9494","#5fd6a0"] },
+        { a:"#11a050", g:["#3cc66e","#11a050","#a3d977"] },
+        { a:"#ec5e12", g:["#ff8a3d","#ec5e12","#ffb74d"] },
+        { a:"#ff2d78", g:["#ff6098","#ff2d78","#ff8fb3"] },
+        { a:"#2b2b30", g:["#e8e8ee","#b8b8c2","#8a8a96"] },
+        { a:"#f0f0f5", g:["#4a4a52","#2b2b30","#6a6a72"] }
+      ];
+      function gv(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+      function sv(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+      function gradFor(a){ for (var i=0;i<ACCENTS.length;i++) if (ACCENTS[i].a===a) return ACCENTS[i].g; return ["#5fa0ff","#2f80ff","#4fc3f7"]; }
+      function relLum(hex){ hex=(hex||"").replace("#",""); if(hex.length===3)hex=hex.split("").map(function(c){return c+c;}).join(""); var r=parseInt(hex.slice(0,2),16)/255,g=parseInt(hex.slice(2,4),16)/255,bl=parseInt(hex.slice(4,6),16)/255; function f(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);} return 0.2126*f(r)+0.7152*f(g)+0.0722*f(bl); }
+      function rgba(hex,al){ hex=hex.replace("#",""); if(hex.length===3)hex=hex.split("").map(function(c){return c+c;}).join(""); var n=parseInt(hex,16); return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+al+")"; }
+      var accent = gv("mp_accent") || "#2f80ff";
+      function accentText(){ var L=relLum(accent), dark=document.body.classList.contains("dark"); if(L<0.16)return "#fff"; if(L>0.70)return "#1a1a18"; return dark?"#fff":"#1a1a18"; }
+      function applyAccent(a){
+        accent=a; var g=gradFor(a), st=document.body.style;
+        st.setProperty("--accent",a);
+        st.setProperty("--accent-soft",rgba(a,0.18));
+        st.setProperty("--title-g1",g[0]); st.setProperty("--title-g2",g[1]); st.setProperty("--title-g3",g[2]);
+        st.setProperty("--accent-text",accentText());
+        sv("mp_accent",a);
+        var pop=document.getElementById("accentPop");
+        if(pop) pop.querySelectorAll(".acc-sw").forEach(function(x){ x.classList.toggle("sel", x.getAttribute("data-a")===a); });
+      }
+      var themeToggle=document.getElementById("themeToggle");
+      function applyTheme(dark){
+        document.body.classList.toggle("dark",dark);
+        sv("mp_theme", dark?"dark":"light");
+        if(themeToggle) themeToggle.textContent = dark ? "☀️" : "🌙";
+        var meta=document.querySelector('meta[name=theme-color]'); if(meta) meta.setAttribute("content", dark?"#1a1a1c":"#faf9f5");
+        document.body.style.setProperty("--accent-text", accentText());
+      }
+      applyTheme(gv("mp_theme")!=="light");
+      (function(){
+        var pop=document.getElementById("accentPop"); if(!pop) return;
+        var html=""; ACCENTS.forEach(function(c){ html+='<button class="acc-sw" data-a="'+c.a+'" style="background:'+c.a+'"></button>'; });
+        pop.innerHTML=html;
+        pop.querySelectorAll(".acc-sw").forEach(function(x){ x.addEventListener("click",function(e){ e.stopPropagation(); applyAccent(x.getAttribute("data-a")); pop.hidden=true; }); });
+      })();
+      applyAccent(accent);
+      var accentBtn=document.getElementById("accentBtn");
+      if(accentBtn) accentBtn.addEventListener("click",function(e){ e.stopPropagation(); var pop=document.getElementById("accentPop"); if(pop) pop.hidden=!pop.hidden; });
+      if(themeToggle) themeToggle.addEventListener("click",function(){ applyTheme(!document.body.classList.contains("dark")); });
+      document.addEventListener("click",function(){ var pop=document.getElementById("accentPop"); if(pop&&!pop.hidden) pop.hidden=true; });
+    })();
+
+    // ---- Upload options (saved defaults, stored on this device) ----
+    function initUploadOptions() {
+      var LS = 'mp_uploadopts';
+      var saved = {};
+      try { saved = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { saved = {}; }
+      function seg(id, val) {
+        var box = document.getElementById(id); if (!box) return;
+        var btns = box.querySelectorAll('button');
+        Array.prototype.forEach.call(btns, function (b) {
+          b.classList.toggle('sel', b.getAttribute('data-v') === val);
+          b.addEventListener('click', function () {
+            Array.prototype.forEach.call(btns, function (x) { x.classList.remove('sel'); });
+            b.classList.add('sel');
+          });
+        });
+      }
+      function segVal(id) { var el = document.querySelector('#' + id + ' button.sel'); return el ? el.getAttribute('data-v') : ''; }
+      function setVal(id, v) { var el = document.getElementById(id); if (el != null && v != null) el.value = v; }
+      function setChk(id, v) { var el = document.getElementById(id); if (el && typeof v === 'boolean') el.checked = v; }
+      function getVal(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+      function getChk(id) { var el = document.getElementById(id); return !!(el && el.checked); }
+
+      seg('optPrivacy', saved.privacy || 'private');
+      seg('optKids', saved.kids || 'no');
+      seg('optLicense', saved.license || 'youtube');
+      setVal('optCategory', saved.category || '1');
+      setVal('optTags', saved.tags || '');
+      setVal('optLang', saved.lang || '');
+      setVal('optPlaylist', saved.playlist || '');
+      setChk('optEmbeddable', saved.embeddable !== false);
+      setChk('optNotify', saved.notify !== false);
+      setChk('optScheduleOn', !!saved.scheduleOn);
+      setVal('optScheduleAt', saved.scheduleAt || '');
+
+      var schedOn = document.getElementById('optScheduleOn');
+      var schedAt = document.getElementById('optScheduleAt');
+      function syncSched() { if (schedAt) schedAt.style.display = (schedOn && schedOn.checked) ? 'block' : 'none'; }
+      if (schedOn) schedOn.addEventListener('change', syncSched);
+      syncSched();
+
+      var saveBtn = document.getElementById('optSaveBtn');
+      var statusEl = document.getElementById('optStatus');
+      if (saveBtn) saveBtn.addEventListener('click', function () {
+        var data = {
+          privacy: segVal('optPrivacy'), kids: segVal('optKids'), license: segVal('optLicense'),
+          category: getVal('optCategory'), tags: getVal('optTags'), lang: getVal('optLang'),
+          playlist: getVal('optPlaylist'), embeddable: getChk('optEmbeddable'), notify: getChk('optNotify'),
+          scheduleOn: getChk('optScheduleOn'), scheduleAt: getVal('optScheduleAt')
+        };
+        try { localStorage.setItem(LS, JSON.stringify(data)); } catch (e) {}
+        if (statusEl) { statusEl.textContent = 'Saved as your defaults on this device.'; statusEl.style.color = 'var(--good)'; }
+      });
+    }
+
+    loadTemplate();
+    initUploadOptions();
+    refreshStatus();
+  </script>
+</body>
+</html>
