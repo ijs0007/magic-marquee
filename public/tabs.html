@@ -142,6 +142,7 @@
     .selrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:-4px 0 14px; }
     .txbtn { width:auto; padding:7px 13px; background:var(--chip); color:#fff; border:1px solid var(--border); border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
     .txbtn.ghost { background:transparent; color:var(--text-soft); font-weight:600; }
+    .txbtn.sel { background:var(--accent); border-color:var(--accent); color:#fff; }
     .selinfo { font-size:12.5px; color:var(--text-soft); }
     .chip.blue { background:rgba(14,170,245,.16); color:#0eaaf5; border-color:#0eaaf5; }
     .chip.scrubbing { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
@@ -738,7 +739,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.94</div>
+    <div class="foot">Magic Marquee · v0.95</div>
   </div>
 
   <script>
@@ -1786,17 +1787,17 @@
     }
 
     // headline font string (family + optional italic). The badge is separate and stays Montserrat.
-    function hFont(px) {
-      return (txItalic ? 'italic ' : '') + (txThin ? '500' : '800') + ' ' + px + 'px "' + headlineFont + '", sans-serif';
+    function hFont(px, w) {
+      return ((w && w.i) ? 'italic ' : '') + ((w && w.n) ? '500' : '800') + ' ' + px + 'px "' + headlineFont + '", sans-serif';
     }
     // underline / strikethrough drawn across a text row (canvas has no native decoration).
-    function txDeco(ctx, x1, x2, baseline, fs, col) {
-      if ((!txUnderline && !txStrike) || x2 <= x1) return;
+    function txDeco(ctx, x1, x2, baseline, fs, col, u, k) {
+      if ((!u && !k) || x2 <= x1) return;
       var sc = ctx.shadowColor, sb = ctx.shadowBlur, sox = ctx.shadowOffsetX, soy = ctx.shadowOffsetY;
       ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
       ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, fs * 0.055); ctx.lineCap = 'butt';
-      if (txUnderline) { var yu = baseline + fs * 0.16; ctx.beginPath(); ctx.moveTo(x1, yu); ctx.lineTo(x2, yu); ctx.stroke(); }
-      if (txStrike) { var ys = baseline - fs * 0.32; ctx.beginPath(); ctx.moveTo(x1, ys); ctx.lineTo(x2, ys); ctx.stroke(); }
+      if (u) { var yu = baseline + fs * 0.16; ctx.beginPath(); ctx.moveTo(x1, yu); ctx.lineTo(x2, yu); ctx.stroke(); }
+      if (k) { var ys = baseline - fs * 0.32; ctx.beginPath(); ctx.moveTo(x1, ys); ctx.lineTo(x2, ys); ctx.stroke(); }
       ctx.shadowColor = sc; ctx.shadowBlur = sb; ctx.shadowOffsetX = sox; ctx.shadowOffsetY = soy;
     }
 
@@ -1837,13 +1838,12 @@
         var cx = b.x + opts.padX;
         var spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
-          ctx.font = hFont(b.fs * (b.line[k].s || 1));
+          ctx.font = hFont(b.fs * (b.line[k].s || 1), b.line[k]);
           extrude3D(ctx, b.line[k].t, cx, baseline);
           ctx.fillStyle = b.line[k].b ? (_hlg || accentColor) : '#ffffff';
           ctx.fillText(b.line[k].t, cx, baseline);
-          cx += ctx.measureText(b.line[k].t).width + spaceW;
+          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].b ? (_hlg || accentColor) : '#ffffff', b.line[k].u, b.line[k].k); cx += _ww + spaceW;
         }
-        txDeco(ctx, b.x + opts.padX, cx - spaceW, baseline, b.fs, '#ffffff');
       }
     }
 
@@ -1899,7 +1899,7 @@
         var _tbx = (isC && txGrad.on) ? (txGrad.whole ? groupBox(blocks) : [b.x, b.y, b.blockW, b.blockH]) : null; var _txg = _tbx ? makeGrad(ctx, txGrad, _tbx[0], _tbx[1], _tbx[2], _tbx[3]) : null;
         for (var k = 0; k < b.line.length; k++) {
           var w = b.line[k];
-          ctx.font = hFont(b.fs * (w.s || 1));
+          ctx.font = hFont(b.fs * (w.s || 1), w);
           extrude3D(ctx, w.t, cx, baseline);
           if (!isC || customShadow.on) {
             ctx.fillStyle = isC ? hexToRgba(customShadow.color, customShadow.strength) : 'rgba(0,0,0,0.55)';
@@ -1911,9 +1911,8 @@
           }
           ctx.fillStyle = w.b ? (_hlg || accentColor) : (isC ? (_txg || customTextColor) : '#ffffff');
           ctx.fillText(w.t, cx, baseline);
-          cx += ctx.measureText(w.t).width + spaceW;
+          var _ww = ctx.measureText(w.t).width; if (w.u || w.k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (w.s || 1), w.b ? (_hlg || accentColor) : (isC ? (_txg || customTextColor) : '#ffffff'), w.u, w.k); cx += _ww + spaceW;
         }
-        txDeco(ctx, b.x + opts.padX, cx - spaceW, baseline, b.fs, isC ? customTextColor : '#ffffff');
       }
     }
 
@@ -1980,13 +1979,12 @@
         ctx.font = hFont(b.fs);
         var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
-          ctx.font = hFont(b.fs * (b.line[k].s || 1));
+          ctx.font = hFont(b.fs * (b.line[k].s || 1), b.line[k]);
           extrude3D(ctx, b.line[k].t, cx, baseline);
           ctx.fillStyle = b.line[k].b ? (_hlg || accentColor) : '#ffffff';
           ctx.fillText(b.line[k].t, cx, baseline);
-          cx += ctx.measureText(b.line[k].t).width + spaceW;
+          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].b ? (_hlg || accentColor) : '#ffffff', b.line[k].u, b.line[k].k); cx += _ww + spaceW;
         }
-        txDeco(ctx, b.x + opts.padX, cx - spaceW, baseline, b.fs, '#ffffff');
       }
       ctx.restore();
     }
@@ -2013,13 +2011,12 @@
         ctx.font = hFont(b.fs);
         var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
-          ctx.font = hFont(b.fs * (b.line[k].s || 1));
+          ctx.font = hFont(b.fs * (b.line[k].s || 1), b.line[k]);
           extrude3D(ctx, b.line[k].t, cx, baseline);
           ctx.fillStyle = b.line[k].b ? (_hlg || accentColor) : '#ffffff';
           ctx.fillText(b.line[k].t, cx, baseline);
-          cx += ctx.measureText(b.line[k].t).width + spaceW;
+          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].b ? (_hlg || accentColor) : '#ffffff', b.line[k].u, b.line[k].k); cx += _ww + spaceW;
         }
-        txDeco(ctx, b.x + opts.padX, cx - spaceW, baseline, b.fs, '#ffffff');
       }
     }
 
@@ -2105,15 +2102,25 @@
       var el = document.getElementById('selInfo'), cl = document.getElementById('selClear'), n = selWords.size;
       if (el) el.textContent = n ? (n + ' selected') : 'nothing selected (Pop affects all)';
       if (cl) cl.style.display = n ? '' : 'none';
+      updateStyleBtns();
+    }
+    function applyWordAttr(attr) {
+      var t = selTargets(); if (!t.length) return;
+      var allOn = t.every(function (k) { var p = k.split(':'); return overlayLines[+p[0]][+p[1]][attr]; });
+      t.forEach(function (k) { var p = k.split(':'); overlayLines[+p[0]][+p[1]][attr] = !allOn; });
+      renderChips(); drawThumb(); updateStyleBtns();
+    }
+    function updateStyleBtns() {
+      var t = selTargets();
+      [['txPop', 'b'], ['txItalic', 'i'], ['txUnder', 'u'], ['txStrike', 'k'], ['txThin', 'n']].forEach(function (pair) {
+        var b = document.getElementById(pair[0]); if (!b) return;
+        var on = t.length && t.every(function (k) { var p = k.split(':'); return overlayLines[+p[0]][+p[1]][pair[1]]; });
+        b.classList.toggle('sel', !!on);
+      });
     }
     (function () {
       var pop = document.getElementById('txPop');
-      if (pop) pop.addEventListener('click', function () {
-        var t = selTargets(); if (!t.length) return;
-        var allB = t.every(function (k) { var p = k.split(':'); return overlayLines[+p[0]][+p[1]].b; });
-        t.forEach(function (k) { var p = k.split(':'); overlayLines[+p[0]][+p[1]].b = !allB; });
-        renderChips(); drawThumb();
-      });
+      if (pop) pop.addEventListener('click', function () { applyWordAttr('b'); });
       var clr = document.getElementById('selClear');
       if (clr) clr.addEventListener('click', function () { selWords.clear(); renderChips(); updateSelInfo(); });
       updateSelInfo();
@@ -2837,10 +2844,10 @@
     buildFontPick();
     (function () {
       function wireTog(id, g, st) { var b = document.getElementById(id); if (!b) return; if (g()) b.classList.add('sel'); b.addEventListener('click', function () { st(!g()); b.classList.toggle('sel', g()); drawThumb(); }); }
-      wireTog('txItalic', function () { return txItalic; }, function (v) { txItalic = v; });
-      wireTog('txUnder', function () { return txUnderline; }, function (v) { txUnderline = v; });
-      wireTog('txStrike', function () { return txStrike; }, function (v) { txStrike = v; });
-      wireTog('txThin', function () { return txThin; }, function (v) { txThin = v; });
+      var _bI = document.getElementById('txItalic'); if (_bI) _bI.addEventListener('click', function () { applyWordAttr('i'); });
+      var _bU = document.getElementById('txUnder'); if (_bU) _bU.addEventListener('click', function () { applyWordAttr('u'); });
+      var _bK = document.getElementById('txStrike'); if (_bK) _bK.addEventListener('click', function () { applyWordAttr('k'); });
+      var _bN = document.getElementById('txThin'); if (_bN) _bN.addEventListener('click', function () { applyWordAttr('n'); });
       var trig = document.getElementById('fontTrigger'), list = document.getElementById('fontPick');
       if (trig && list) {
         trig.addEventListener('click', function (e) { e.stopPropagation(); list.classList.toggle('open'); });
@@ -3068,7 +3075,7 @@
       var so = document.getElementById('fxShadowOn'); if (so) so.checked = !!(styleFx.custom && styleFx.custom.on);
       var ft = document.getElementById('fitToggle'); if (ft) ft.checked = !freeText;
       buildFontPick();
-      [['txItalic', txItalic], ['txUnder', txUnderline], ['txStrike', txStrike], ['txThin', txThin]].forEach(function (p) { var b = document.getElementById(p[0]); if (b) b.classList.toggle('sel', p[1]); });
+      updateStyleBtns();
       var hlt = document.getElementById('hlGradTog'); if (hlt) { hlt.classList.toggle('on', hlGrad.on); hlt.textContent = hlGrad.on ? 'Gradient \u2713' : '+ Gradient'; }
       var hlp = document.getElementById('hlGradPanel'); if (hlp) hlp.style.display = hlGrad.on ? 'block' : 'none';
       setDV('dHlAngle', Math.round(hlGrad.angle) + '\u00b0'); setDV('dHlMid', Math.round(hlGrad.mid * 100) + '%');
