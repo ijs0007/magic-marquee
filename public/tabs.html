@@ -442,7 +442,6 @@
       <label>Border</label>
       <div id="borderToggle" class="segmented">
         <button type="button" data-border="brand" class="sel">Brand</button>
-        <button type="button" data-border="accent">Accent</button>
         <button type="button" data-border="custom">Custom</button>
         <button type="button" data-border="none">None</button>
       </div>
@@ -533,25 +532,14 @@
 
       <label>Tap words to select · hold &amp; drag to resize</label>
       <div id="wordChips" class="chips"></div>
-      <div class="selrow"><button type="button" id="txPop" class="txbtn">Pop</button><span id="selInfo" class="selinfo"></span><button type="button" id="selClear" class="txbtn ghost" style="display:none">Clear selection</button></div>
+      <div class="selrow"><span id="selInfo" class="selinfo"></span><button type="button" id="selClear" class="txbtn ghost" style="display:none">Clear selection</button></div>
 
       <label>Text styling</label>
       <div style="margin-bottom:14px" class="fontdrop"><span class="tt-label" style="display:block;margin-bottom:8px">Headline font</span><button type="button" id="fontTrigger" class="fontdrop-trigger"><span id="fontTriggerLabel">Montserrat</span><span class="fontdrop-caret">&#9662;</span></button><div id="fontPick" class="fontpick fontdrop-list"></div></div>
       <div style="margin-bottom:14px"><span class="tt-label" style="display:block;margin-bottom:8px">Style</span><div class="txstyle"><button type="button" id="txItalic" style="font-style:italic">Italic</button><button type="button" id="txUnder" style="text-decoration:underline">Underline</button><button type="button" id="txStrike" style="text-decoration:line-through">Strike</button><button type="button" id="txThin" style="font-weight:400">Thinner</button></div></div>
       <div class="hlwrap">
-        <span class="tt-label">Highlight color</span>
-        <div id="accentRow" class="swatches"></div>
-        <button type="button" id="hlGradTog" class="gradtog">+ Gradient</button>
-        <div id="hlGradPanel" class="gradpanel" style="display:none">
-          <span class="tt-label" style="display:block;margin-bottom:8px">Highlight gradient</span>
-          <div class="gmode"><button type="button" id="hlGmode1" class="gm1 sel">Color 1</button><button type="button" id="hlGmode2" class="gm2">Color 2</button></div>
-          <div class="texttools" style="margin-top:10px">
-            <div class="tt-block"><span class="tt-label">Angle</span><div class="dial" id="dHlAngle" style="min-width:76px"><span class="dk">Angle</span><span class="dv" id="hlAngleVal">90&deg;</span></div></div>
-            <div class="tt-block"><span class="tt-label">Blend</span><div class="dial" id="dHlMid" style="min-width:76px"><span class="dk">Blend</span><span class="dv" id="hlMidVal">50%</span></div></div>
-            <div class="tt-block"><span class="tt-label">Spread</span><label class="gwhole"><input type="checkbox" id="hlWhole"> Whole text</label></div>
-          </div>
-          <p class="hint" style="margin:8px 0 0">Pick the two colors from the swatches above &mdash; <b style="color:#ff453a">red ring</b> = color 1, <b style="color:#0a84ff">blue ring</b> = color 2.</p>
-        </div>
+        <span class="tt-label">Text color</span>
+        <div id="fxTextSw" class="swatchpick"></div>
       </div>
       <div class="texttools">
         <div class="tt-block">
@@ -617,8 +605,7 @@
       </div>
       <div id="fxCustom" style="display:none">
         <div class="hlwrap">
-          <span class="tt-label">Text color</span>
-          <div id="fxTextSw" class="swatchpick"></div>
+          <span class="tt-label">Text gradient</span>
           <button type="button" id="txGradTog" class="gradtog">+ Gradient</button>
           <div id="txGradPanel" class="gradpanel" style="display:none">
             <span class="tt-label" style="display:block;margin-bottom:8px">Text gradient</span>
@@ -739,7 +726,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.97</div>
+    <div class="foot">Magic Marquee · v0.98</div>
   </div>
 
   <script>
@@ -1829,7 +1816,7 @@
       var opts = { W: W, H: H, targetW: W * 0.47 * textScale, maxFont: 108 * textScale, minFont: 26 * textScale, padX: 18, padY: 10, lineGap: 12, margin: 48, anchor: thumbPos };
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
       for (var i = 0; i < blocks.length; i++) {
-        var b = blocks[i]; var _hbx = hlGrad.on ? (hlGrad.whole ? groupBox(blocks) : [b.x, b.y, b.blockW, b.blockH]) : null; var _hlg = _hbx ? makeGrad(ctx, hlGrad, _hbx[0], _hbx[1], _hbx[2], _hbx[3]) : null;
+        var b = blocks[i];
         roundRectPath(ctx, b.x, b.y, b.blockW, b.blockH, 8);
         ctx.fillStyle = hexToRgba(styleFx.blocks.color, styleFx.blocks.opacity); ctx.fill();
         ctx.font = hFont(b.fs);
@@ -1840,9 +1827,9 @@
         for (var k = 0; k < b.line.length; k++) {
           ctx.font = hFont(b.fs * (b.line[k].s || 1), b.line[k]);
           extrude3D(ctx, b.line[k].t, cx, baseline);
-          ctx.fillStyle = b.line[k].b ? (_hlg || accentColor) : '#ffffff';
+          ctx.fillStyle = b.line[k].c || customTextColor;
           ctx.fillText(b.line[k].t, cx, baseline);
-          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].b ? (_hlg || accentColor) : '#ffffff', b.line[k].u, b.line[k].k); cx += _ww + spaceW;
+          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].c || customTextColor, b.line[k].u, b.line[k].k); cx += _ww + spaceW;
         }
       }
     }
@@ -1889,7 +1876,7 @@
       }
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, src, opts);
       for (var i = 0; i < blocks.length; i++) {
-        var b = blocks[i]; var _hbx = hlGrad.on ? (hlGrad.whole ? groupBox(blocks) : [b.x, b.y, b.blockW, b.blockH]) : null; var _hlg = _hbx ? makeGrad(ctx, hlGrad, _hbx[0], _hbx[1], _hbx[2], _hbx[3]) : null;
+        var b = blocks[i];
         ctx.font = hFont(b.fs);
         ctx.textBaseline = 'alphabetic';
         var baseline = b.y + opts.padY + b.asc;
@@ -1909,9 +1896,9 @@
             ctx.lineJoin = 'round'; ctx.lineWidth = customOutline.width; ctx.strokeStyle = customOutline.color;
             ctx.strokeText(w.t, cx, baseline);
           }
-          ctx.fillStyle = w.b ? (_hlg || accentColor) : (isC ? (w.c || _txg || customTextColor) : '#ffffff');
+          ctx.fillStyle = w.c || (isC && _txg) || customTextColor;
           ctx.fillText(w.t, cx, baseline);
-          var _ww = ctx.measureText(w.t).width; if (w.u || w.k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (w.s || 1), w.b ? (_hlg || accentColor) : (isC ? (w.c || _txg || customTextColor) : '#ffffff'), w.u, w.k); cx += _ww + spaceW;
+          var _ww = ctx.measureText(w.t).width; if (w.u || w.k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (w.s || 1), w.c || (isC && _txg) || customTextColor, w.u, w.k); cx += _ww + spaceW;
         }
       }
     }
@@ -1975,15 +1962,15 @@
       ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 16;
       ctx.textBaseline = 'alphabetic';
       for (var i = 0; i < blocks.length; i++) {
-        var b = blocks[i]; var _hbx = hlGrad.on ? (hlGrad.whole ? groupBox(blocks) : [b.x, b.y, b.blockW, b.blockH]) : null; var _hlg = _hbx ? makeGrad(ctx, hlGrad, _hbx[0], _hbx[1], _hbx[2], _hbx[3]) : null;
+        var b = blocks[i];
         ctx.font = hFont(b.fs);
         var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
           ctx.font = hFont(b.fs * (b.line[k].s || 1), b.line[k]);
           extrude3D(ctx, b.line[k].t, cx, baseline);
-          ctx.fillStyle = b.line[k].b ? (_hlg || accentColor) : '#ffffff';
+          ctx.fillStyle = b.line[k].c || customTextColor;
           ctx.fillText(b.line[k].t, cx, baseline);
-          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].b ? (_hlg || accentColor) : '#ffffff', b.line[k].u, b.line[k].k); cx += _ww + spaceW;
+          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].c || customTextColor, b.line[k].u, b.line[k].k); cx += _ww + spaceW;
         }
       }
       ctx.restore();
@@ -2007,15 +1994,15 @@
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, overlayLines, opts);
       ctx.textBaseline = 'alphabetic';
       for (var i = 0; i < blocks.length; i++) {
-        var b = blocks[i]; var _hbx = hlGrad.on ? (hlGrad.whole ? groupBox(blocks) : [b.x, b.y, b.blockW, b.blockH]) : null; var _hlg = _hbx ? makeGrad(ctx, hlGrad, _hbx[0], _hbx[1], _hbx[2], _hbx[3]) : null;
+        var b = blocks[i];
         ctx.font = hFont(b.fs);
         var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
           ctx.font = hFont(b.fs * (b.line[k].s || 1), b.line[k]);
           extrude3D(ctx, b.line[k].t, cx, baseline);
-          ctx.fillStyle = b.line[k].b ? (_hlg || accentColor) : '#ffffff';
+          ctx.fillStyle = b.line[k].c || customTextColor;
           ctx.fillText(b.line[k].t, cx, baseline);
-          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].b ? (_hlg || accentColor) : '#ffffff', b.line[k].u, b.line[k].k); cx += _ww + spaceW;
+          var _ww = ctx.measureText(b.line[k].t).width; if (b.line[k].u || b.line[k].k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (b.line[k].s || 1), b.line[k].c || customTextColor, b.line[k].u, b.line[k].k); cx += _ww + spaceW;
         }
       }
     }
@@ -2100,7 +2087,7 @@
     function selTargets() { if (selWords.size) { return Array.from(selWords).filter(function (k) { var p = k.split(':'); return overlayLines[+p[0]] && overlayLines[+p[0]][+p[1]]; }); } return wordKeys(); }
     function updateSelInfo() {
       var el = document.getElementById('selInfo'), cl = document.getElementById('selClear'), n = selWords.size;
-      if (el) el.textContent = n ? (n + ' selected') : 'nothing selected (Pop affects all)';
+      if (el) el.textContent = n ? (n + ' selected') : 'nothing selected (affects all text)';
       if (cl) cl.style.display = n ? '' : 'none';
       updateStyleBtns(); refreshTextSw();
     }
@@ -2174,16 +2161,11 @@
       if (clr) clr.addEventListener('click', function () { selWords.clear(); renderChips(); updateSelInfo(); });
       updateSelInfo();
     })();
-    function styleChip(chip, on) {
-      if (on) {
-        chip.style.background = hexToRgba(accentColor, 0.16);
-        chip.style.color = accentColor;
-        chip.style.borderColor = accentColor;
-      } else {
-        chip.style.background = '';
-        chip.style.color = '';
-        chip.style.borderColor = '';
-      }
+    function styleChip(chip, col) {
+      chip.style.color = col;
+      var _r = hexToRgb(col), _l = (0.299 * _r[0] + 0.587 * _r[1] + 0.114 * _r[2]);
+      chip.style.background = _l > 140 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.92)';
+      chip.style.borderColor = _l > 140 ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.22)';
     }
 
     function renderChips() {
@@ -2195,7 +2177,7 @@
           chip.type = 'button';
           chip.className = 'chip';
           chip.textContent = w.t;
-          styleChip(chip, w.b);
+          styleChip(chip, w.c || customTextColor);
           if (selWords.has(li + ':' + wi)) chip.classList.add('chipsel');
           var SENS = 180, SMIN = 0.5, SMAX = 2.2;
           var downX = 0, downS = 1, lastX = 0, downY = 0, holdT = null, scrubbing = false, moved = false, suppress = false, lastTap = 0;
@@ -2281,6 +2263,7 @@
     }
     function buildAccentRow() {
       var row = document.getElementById('accentRow');
+      if (!row) return;
       row.innerHTML = '';
       accentColors.forEach(function (col) {
         var btn = document.createElement('button');
