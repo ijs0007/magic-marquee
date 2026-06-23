@@ -144,6 +144,7 @@
     .txbtn.ghost { background:transparent; color:var(--text-soft); font-weight:600; }
     .txbtn.sel { background:var(--accent); border-color:var(--accent); color:#fff; }
     .selinfo { font-size:12.5px; color:var(--text-soft); }
+    .selrow .selbtn { padding:4px 10px; font-size:11px; border-radius:6px; }
     .chip.blue { background:rgba(14,170,245,.16); color:#0eaaf5; border-color:#0eaaf5; }
     .chip.scrubbing { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
     .posgrid { display:grid; grid-template-columns:repeat(3,40px); gap:6px; margin-bottom:18px; }
@@ -532,7 +533,7 @@
 
       <label>Tap words to select · hold &amp; drag to resize</label>
       <div id="wordChips" class="chips"></div>
-      <div class="selrow"><span id="selInfo" class="selinfo"></span><button type="button" id="selClear" class="txbtn ghost" style="display:none">Clear selection</button></div>
+      <div class="selrow"><span id="selInfo" class="selinfo" style="margin-right:auto"></span><button type="button" id="selAll" class="txbtn ghost selbtn">Select all</button><button type="button" id="selClear" class="txbtn ghost selbtn">Clear</button></div>
 
       <label>Text styling</label>
       <div style="margin-bottom:14px" class="fontdrop"><span class="tt-label" style="display:block;margin-bottom:8px">Headline font</span><button type="button" id="fontTrigger" class="fontdrop-trigger"><span id="fontTriggerLabel">Montserrat</span><span class="fontdrop-caret">&#9662;</span></button><div id="fontPick" class="fontpick fontdrop-list"></div></div>
@@ -726,7 +727,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.99</div>
+    <div class="foot">Magic Marquee · v1.0</div>
   </div>
 
   <script>
@@ -2087,9 +2088,8 @@
     function wordKeys() { var a = []; overlayLines.forEach(function (ln, li) { ln.forEach(function (w, wi) { a.push(li + ':' + wi); }); }); return a; }
     function selTargets() { if (selWords.size) { return Array.from(selWords).filter(function (k) { var p = k.split(':'); return overlayLines[+p[0]] && overlayLines[+p[0]][+p[1]]; }); } return wordKeys(); }
     function updateSelInfo() {
-      var el = document.getElementById('selInfo'), cl = document.getElementById('selClear'), n = selWords.size;
+      var el = document.getElementById('selInfo'), n = selWords.size;
       if (el) el.textContent = n ? (n + ' selected') : 'nothing selected (affects all text)';
-      if (cl) cl.style.display = n ? '' : 'none';
       updateStyleBtns(); refreshTextSw();
     }
     function applyWordAttr(attr) {
@@ -2160,15 +2160,20 @@
       if (pop) pop.addEventListener('click', function () { applyWordAttr('b'); });
       var clr = document.getElementById('selClear');
       if (clr) clr.addEventListener('click', function () { selWords.clear(); renderChips(); updateSelInfo(); });
+      var sall = document.getElementById('selAll');
+      if (sall) sall.addEventListener('click', function () { selWords.clear(); wordKeys().forEach(function (k) { selWords.add(k); }); renderChips(); updateSelInfo(); });
       updateSelInfo();
     })();
     function styleChip(chip, col) {
-      chip.style.color = col;
       var _r = hexToRgb(col), _l = (0.299 * _r[0] + 0.587 * _r[1] + 0.114 * _r[2]);
-      if (_l < 80) {
-        chip.style.background = 'rgba(255,255,255,0.92)';
-        chip.style.borderColor = 'rgba(0,0,0,0.25)';
+      var _chroma = Math.max(_r[0], _r[1], _r[2]) - Math.min(_r[0], _r[1], _r[2]);
+      if (_chroma < 32) {
+        var _dk = _l < 32;
+        chip.style.background = 'rgba(' + _r[0] + ',' + _r[1] + ',' + _r[2] + ',0.9)';
+        chip.style.color = _dk ? '#fff' : '#000';
+        chip.style.borderColor = _dk ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.22)';
       } else {
+        chip.style.color = col;
         chip.style.background = hexToRgba(col, 0.16);
         chip.style.borderColor = hexToRgba(col, 0.55);
       }
