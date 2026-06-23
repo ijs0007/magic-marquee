@@ -726,7 +726,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.98</div>
+    <div class="foot">Magic Marquee · v0.99</div>
   </div>
 
   <script>
@@ -2068,8 +2068,9 @@
           var pf = prevFlat[gi];
           var b = pf ? pf.b : false;
           var sc = pf ? (pf.s || 1) : 1;
+          var cc = pf ? pf.c : undefined;
           gi++;
-          return { t: t, b: b, s: sc };
+          return { t: t, b: b, s: sc, c: cc };
         }));
         if (out.length >= 5) break;
       }
@@ -2164,8 +2165,13 @@
     function styleChip(chip, col) {
       chip.style.color = col;
       var _r = hexToRgb(col), _l = (0.299 * _r[0] + 0.587 * _r[1] + 0.114 * _r[2]);
-      chip.style.background = _l > 140 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.92)';
-      chip.style.borderColor = _l > 140 ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.22)';
+      if (_l < 80) {
+        chip.style.background = 'rgba(255,255,255,0.92)';
+        chip.style.borderColor = 'rgba(0,0,0,0.25)';
+      } else {
+        chip.style.background = hexToRgba(col, 0.16);
+        chip.style.borderColor = hexToRgba(col, 0.55);
+      }
     }
 
     function renderChips() {
@@ -2440,7 +2446,7 @@
         body: JSON.stringify({ title: lastRawTitle || titleInput.value || '', synopsis: lastSynopsis || descInput.value || '' })
       }).then(function (r) { return r.json(); }).then(function (res) {
         if (res && res.lines && res.lines.length) {
-          overlayLines = res.lines.map(function (line) { return line.map(function (w) { return { t: String(w.t || ''), b: !!w.b }; }); });
+          overlayLines = res.lines.map(function (line) { return line.map(function (w) { return { t: String(w.t || ''), b: !!w.b, c: w.b ? '#0eaaf5' : undefined }; }); });
         } else {
           // AI gave nothing (or errored) — drop in a starter from the title so it's never blank.
           overlayLines = fallbackOverlay();
@@ -3468,7 +3474,7 @@
         body: JSON.stringify({ title: lastRawTitle || titleInput.value || '', synopsis: lastSynopsis || descInput.value || '' })
       }).then(function (r) { return r.json(); }).then(function (res) {
         if (res && res.lines && res.lines.length) {
-          overlayLines = res.lines.map(function (line) { return line.map(function (w) { return { t: String(w.t || ''), b: !!w.b }; }); });
+          overlayLines = res.lines.map(function (line) { return line.map(function (w) { return { t: String(w.t || ''), b: !!w.b, c: w.b ? '#0eaaf5' : undefined }; }); });
         } else { overlayLines = fallbackOverlay(); }
         document.getElementById('overlayText').value = overlayLinesToText(overlayLines);
         renderChips(); drawThumb();
