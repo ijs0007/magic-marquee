@@ -214,7 +214,7 @@
     .tt-label { font-size:11px; font-weight:700; color:var(--text-soft); letter-spacing:.04em; text-transform:uppercase; }
     .texttools .swatches { grid-template-columns:repeat(4,30px); margin-bottom:0; }
     .texttools .posgrid { margin-bottom:0; }
-    .logogrid { display:grid; grid-template-columns:repeat(2,40px); gap:6px; margin-bottom:18px; }
+    .logogrid { display:grid; grid-template-columns:repeat(2,40px); gap:6px; margin-bottom:18px; position:relative; }
     .logogrid button { width:40px; height:40px; background:var(--chip); color:var(--text-soft); padding:0; border-radius:8px; font-size:16px; line-height:1; }
     .logogrid button.sel { background:var(--accent); color:#fff; }
     .texttools .dial { min-width:60px; }
@@ -418,7 +418,7 @@
         <button type="button" data-border="none">None</button>
       </div>
       <div id="borderCustomRow" class="swatchpick" style="display:none; margin-top:10px"></div>
-      <div class="thumbsticky"><canvas id="thumbCanvas" width="1280" height="720"></canvas></div>
+      <div class="thumbsticky"><div style="position:relative"><canvas id="thumbCanvas" width="1280" height="720"></canvas><button type="button" id="compareBtn" style="position:absolute;top:8px;right:8px;z-index:6;display:none;padding:4px 10px;font-size:11.5px;font-weight:700;letter-spacing:.02em;background:rgba(10,10,12,.62);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)">&#8646; Original</button></div></div>
       <p class="genstatus" id="thumbStatus"></p>
 
       <label>Frame from your film</label>
@@ -524,6 +524,7 @@
             <button type="button" data-c="tr" aria-label="Top right">&#8599;</button>
             <button type="button" data-c="bl" aria-label="Bottom left">&#8601;</button>
             <button type="button" data-c="br" aria-label="Bottom right">&#8600;</button>
+            <button type="button" id="logoHide" aria-label="Hide logo" title="Hide logo" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:var(--surface);border:1.5px solid rgba(255,255,255,.2);color:var(--text-soft);font-size:14px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 5px rgba(0,0,0,.45);cursor:pointer">&#8856;</button>
           </div>
         </div>
       </div>
@@ -669,7 +670,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.74</div>
+    <div class="foot">Magic Marquee · v0.78</div>
   </div>
 
   <script>
@@ -729,6 +730,9 @@
     let overlayHidden = false;   // eye toggle: hide on-screen text (also omits it from the export)
     let frameRound = 0;           // extraction round for “more frame choices”
     let thumbFrameImg = null;     // current background Image
+    let originalImg = null;       // pristine pre-AI/pre-edit frame, for the compare toggle
+    let showOriginal = false;     // compare toggle: true = show the untouched original
+    let badgeHidden = false;      // logo corner: true = don't draw the brand badge
     let thumbPos = 'bl';          // text anchor: [t/m/b][l/c/r]
     let thumbStyle = 'cinematic'; // 'cinematic' (scrim + big bottom text) | 'blocks'
     let badgeCorner = ''; // '' = per-style default; else tl/tr/bl/br (user override)
@@ -1792,6 +1796,7 @@
     }
 
     function drawBadge(ctx, W, H, corner, subtle) {
+      if (badgeHidden) return;
       var M = 34, pillH = subtle ? 70 : 84, avD = pillH - (subtle ? 16 : 22), pad = 12;
       var nameFs = subtle ? 21 : 23;
       ctx.font = '800 ' + nameFs + 'px Montserrat, sans-serif'; ctx.textBaseline = 'alphabetic';
@@ -1885,6 +1890,11 @@
       var ctx = c.getContext('2d');
       ctx.clearRect(0, 0, 1280, 720);
       ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1280, 720);
+      if (showOriginal && originalImg && originalImg.complete && originalImg.naturalWidth) {
+        var _oir = originalImg.naturalWidth / originalImg.naturalHeight, _obw = 720 * _oir;
+        ctx.drawImage(originalImg, (1280 - _obw) / 2, 0, _obw, 720);
+        return;
+      }
       if (thumbFrameImg && thumbFrameImg.complete && thumbFrameImg.naturalWidth) {
         if (!gradeReady) rebuildGrade(true);
         ctx.drawImage(gradeCanvas, 0, 0);
@@ -2091,10 +2101,35 @@
       el.appendChild(lab);
     }
 
-    function applyFrame(src, selEl) {
+    function aiResultTo169(src, cb) {
+      var im = new Image();
+      im.onload = function () {
+        var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+        if (!iw || !ih) { cb(src); return; }
+        var sc = Math.max(1280 / iw, 720 / ih);
+        var dw = iw * sc, dh = ih * sc;
+        var cc = document.createElement('canvas'); cc.width = 1280; cc.height = 720;
+        cc.getContext('2d').drawImage(im, (1280 - dw) / 2, (720 - dh) / 2, dw, dh);
+        try { cb(cc.toDataURL('image/jpeg', 0.95)); } catch (e) { cb(src); }
+      };
+      im.onerror = function () { cb(src); };
+      im.src = src;
+    }
+    function syncCompareBtn() {
+      var b = document.getElementById('compareBtn');
+      if (!b) return;
+      if (!originalImg) { b.style.display = 'none'; showOriginal = false; return; }
+      b.style.display = '';
+      b.textContent = showOriginal ? '\u21c6 Edited' : '\u21c6 Original';
+      b.style.background = showOriginal ? 'var(--accent)' : 'rgba(10,10,12,.62)';
+      b.style.borderColor = showOriginal ? 'var(--accent)' : 'rgba(255,255,255,.18)';
+    }
+    function applyFrame(src, selEl, keepOriginal) {
       var img = new Image();
       img.onload = function () {
         thumbFrameImg = img;
+        if (!keepOriginal) originalImg = img;
+        showOriginal = false; syncCompareBtn();
         bgScale = 1; bgOffsetX = 0; bgOffsetY = 0; bgEdge = 0; bgEdgeH = 0; bgBlend = 0.3; trim = { l: 0, r: 0, t: 0, b: 0 }; syncPosDials(); // fresh frame starts at cover
         var zv = document.getElementById('zoomVal'); if (zv) zv.textContent = '1.0\u00d7';
         rebuildGrade(true);
@@ -2270,6 +2305,7 @@
       return { image: ic.toDataURL('image/jpeg', 0.92), mask: mc.toDataURL('image/png') };
     }
     function runExtend() {
+      showOriginal = false; syncCompareBtn();
       var es = document.getElementById('enhanceStatus');
       var inp = buildExtendInputs();
       if (!inp) { es.innerHTML = '<span class="err">Pick a frame first.</span>'; return; }
@@ -2312,6 +2348,7 @@
     }
     function runEnhance(mode) {
       if (mode === 'extendbg') { runExtend(); return; }
+      showOriginal = false; syncCompareBtn();
       var es = document.getElementById('enhanceStatus');
       var needImg = (mode !== 'genbg');
       var img64 = needImg ? currentFrameJpeg() : null;
@@ -2330,12 +2367,14 @@
       }).then(function (r) { return r.json(); }).then(function (res) {
         if (res.error) { es.innerHTML = '<span class="err">' + res.error + '</span>'; return; }
         if (res.image) {
-          var strip = document.getElementById('frameStrip');
-          var im = document.createElement('img');
-          im.src = res.image;
-          im.addEventListener('click', function () { applyFrame(res.image, im); });
-          strip.insertBefore(im, strip.firstChild);
-          applyFrame(res.image, im);
+          aiResultTo169(res.image, function (fixed) {
+            var strip = document.getElementById('frameStrip');
+            var im = document.createElement('img');
+            im.src = fixed;
+            im.addEventListener('click', function () { applyFrame(fixed, im); });
+            strip.insertBefore(im, strip.firstChild);
+            applyFrame(fixed, im, true);
+          });
           es.innerHTML = '<span style="color:#34c759">Done — added to your frames. Not feeling it? Tap any other frame to go back.</span>';
         } else {
           es.innerHTML = '<span class="err">No image came back — try again.</span>';
@@ -2346,6 +2385,29 @@
     Array.prototype.forEach.call(document.querySelectorAll('.enhopt'), function (b) {
       b.addEventListener('click', function () { runEnhance(b.getAttribute('data-mode')); });
     });
+    (function () {
+      var cb = document.getElementById('compareBtn');
+      if (cb) {
+        cb.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+        cb.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (!originalImg) return;
+          showOriginal = !showOriginal;
+          syncCompareBtn(); drawThumb();
+        });
+      }
+      var lh = document.getElementById('logoHide');
+      if (lh) {
+        lh.addEventListener('click', function (e) {
+          e.stopPropagation();
+          badgeHidden = !badgeHidden;
+          lh.style.background = badgeHidden ? 'var(--accent)' : 'var(--surface)';
+          lh.style.color = badgeHidden ? '#fff' : 'var(--text-soft)';
+          lh.style.borderColor = badgeHidden ? 'var(--accent)' : 'rgba(255,255,255,.2)';
+          drawThumb();
+        });
+      }
+    })();
 
     document.getElementById('overlayText').addEventListener('input', function (e) {
       overlayLines = parseOverlayToLines(e.target.value, overlayLines);
@@ -2363,7 +2425,7 @@
       var canvas = document.getElementById('thumbCanvas');
       var dragging = false, sx0 = 0, sy0 = 0, ox0 = 0, oy0 = 0, lockAxis = null;
       canvas.addEventListener('pointerdown', function (e) {
-        if (!thumbFrameImg) return;
+        if (!thumbFrameImg || showOriginal) return;
         dragging = true; lockAxis = null;
         try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
         sx0 = e.clientX; sy0 = e.clientY; ox0 = bgOffsetX; oy0 = bgOffsetY;
@@ -2423,13 +2485,55 @@
 
     // Scrub dial (MSM-style): drag sideways to change the value, double-tap to
     // reset. ~200px of travel covers the full range.
+    function dialNum(str) {
+      str = String(str); var out = '', dot = false;
+      for (var i = 0; i < str.length; i++) {
+        var c = str.charAt(i);
+        if (c >= '0' && c <= '9') out += c;
+        else if (c === '.' && !dot) { out += c; dot = true; }
+        else if (c === '-' && out === '') out += c;
+      }
+      var n = parseFloat(out); return isNaN(n) ? 0 : n;
+    }
     function makeDial(id, opts) {
       var el = document.getElementById(id);
       if (!el) return;
       var valEl = el.querySelector('.dv');
       function show() { valEl.textContent = opts.fmt(opts.get()); }
-      var dragging = false, sx = 0, base = 0, moved = false, lastTap = 0;
+      function openEditor() {
+        if (el.querySelector('input')) return;
+        var inp = document.createElement('input');
+        inp.type = 'text'; inp.inputMode = opts.min < 0 ? 'text' : 'decimal';
+        inp.value = String(dialNum(opts.fmt(opts.get())));
+        inp.style.cssText = 'width:44px;max-width:100%;background:rgba(0,0,0,.25);border:none;border-bottom:1.5px solid var(--accent);border-radius:3px;color:inherit;font:inherit;text-align:center;padding:1px 0;outline:none;';
+        valEl.textContent = ''; valEl.appendChild(inp);
+        inp.focus(); try { inp.select(); } catch (_) { }
+        var done = false;
+        function commit() {
+          if (done) return; done = true;
+          var D = dialNum(inp.value);
+          var lo = dialNum(opts.fmt(opts.min)), hi = dialNum(opts.fmt(opts.max));
+          var a = (hi - lo) / (opts.max - opts.min), b = lo - a * opts.min;
+          var raw = a !== 0 ? (D - b) / a : opts.get();
+          raw = Math.max(opts.min, Math.min(opts.max, raw));
+          raw = Math.round(raw / opts.step) * opts.step;
+          opts.set(raw);
+          if (inp.parentNode) inp.parentNode.removeChild(inp);
+          show(); if (opts.onInput) opts.onInput(); if (opts.onChange) opts.onChange();
+        }
+        function cancel() { if (done) return; done = true; if (inp.parentNode) inp.parentNode.removeChild(inp); show(); }
+        inp.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+          else if (ev.key === 'Escape') { ev.preventDefault(); cancel(); }
+          ev.stopPropagation();
+        });
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); });
+        inp.addEventListener('click', function (ev) { ev.stopPropagation(); });
+      }
+      var dragging = false, sx = 0, base = 0, moved = false, lastTap = 0, tapTimer = null;
       el.addEventListener('pointerdown', function (e) {
+        if (el.querySelector('input')) return;
         dragging = true; moved = false; sx = e.clientX; base = opts.get();
         try { el.setPointerCapture(e.pointerId); } catch (_) { }
         e.preventDefault();
@@ -2448,8 +2552,15 @@
         dragging = false;
         if (!moved) {
           var now = Date.now();
-          if (now - lastTap < 320) { lastTap = 0; opts.set(opts.def); show(); if (opts.onInput) opts.onInput(); }
-          else { lastTap = now; }
+          if (now - lastTap < 320) {
+            lastTap = 0;
+            if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+            opts.set(opts.def); show(); if (opts.onInput) opts.onInput();
+          } else {
+            lastTap = now;
+            if (tapTimer) clearTimeout(tapTimer);
+            tapTimer = setTimeout(function () { tapTimer = null; openEditor(); }, 320);
+          }
         }
         if (opts.onChange) opts.onChange();
       }
