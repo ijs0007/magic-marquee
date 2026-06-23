@@ -146,7 +146,7 @@
     .segmented { display:flex; flex-wrap:wrap; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px; margin-bottom:14px; }
     .segmented button { flex:1 1 70px; width:auto; background:transparent; color:var(--text-soft); padding:9px 0; border-radius:7px; font-size:13px; font-weight:600; }
     .segmented button.sel { background:var(--accent); color:#fff; }
-    .thumbsticky { position:sticky; top:0; z-index:5; background:var(--surface); padding:6px 0 10px; box-shadow:0 8px 14px -8px rgba(0,0,0,.7); }
+    .thumbsticky { position:sticky; top:0; z-index:5; background:var(--bg); padding:6px 0 8px; }
     #thumbCanvas { width:100%; height:auto; border-radius:12px; display:block; background:#000; touch-action:none; cursor:grab; }
     #thumbCanvas:active { cursor:grabbing; }
     .ctlval { color:var(--text-soft); font-weight:600; font-size:13px; }
@@ -670,7 +670,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.80</div>
+    <div class="foot">Magic Marquee · v0.83</div>
   </div>
 
   <script>
@@ -2106,10 +2106,12 @@
       im.onload = function () {
         var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
         if (!iw || !ih) { cb(src); return; }
-        var sc = Math.max(1280 / iw, 720 / ih);
-        var dw = iw * sc, dh = ih * sc;
+        // The edit input put the picture in the center 16:9 band of a 3:2 frame; crop that
+        // same band back out (rows BY..BY+BH of a 1024-tall result) so the result keeps the
+        // exact framing — no zoom, no letterbox bars. Proportional, so any result height works.
+        var sy = ih * (80 / 1024), sh = ih * (864 / 1024);
         var cc = document.createElement('canvas'); cc.width = 1280; cc.height = 720;
-        cc.getContext('2d').drawImage(im, (1280 - dw) / 2, (720 - dh) / 2, dw, dh);
+        cc.getContext('2d').drawImage(im, 0, sy, iw, sh, 0, 0, 1280, 720);
         try { cb(cc.toDataURL('image/jpeg', 0.95)); } catch (e) { cb(src); }
       };
       im.onerror = function () { cb(src); };
@@ -2257,11 +2259,18 @@
     // Current frame as a JPEG data URL (capped to 1536px long side to limit cost).
     function currentFrameJpeg() {
       if (!thumbFrameImg || !thumbFrameImg.naturalWidth) return null;
+      // Compose the frame into the SAME 1536x1024 (3:2) frame the model returns, with the
+      // picture covering the center 16:9 band (BY=80, BH=864 — identical to the extend path).
+      // Matching the input aspect to the output aspect stops gpt-image from zooming/recropping
+      // to fit; aiResultTo169 crops this band back out so the framing is preserved.
+      var MW = 1536, MH = 1024, BH = 864, BY = 80;
       var iw = thumbFrameImg.naturalWidth, ih = thumbFrameImg.naturalHeight;
-      var scale = Math.min(1, 1536 / Math.max(iw, ih));
-      var w = Math.round(iw * scale), h = Math.round(ih * scale);
-      var tc = document.createElement('canvas'); tc.width = w; tc.height = h;
-      tc.getContext('2d').drawImage(thumbFrameImg, 0, 0, w, h);
+      var sc = Math.max(MW / iw, BH / ih);
+      var dw = iw * sc, dh = ih * sc;
+      var tc = document.createElement('canvas'); tc.width = MW; tc.height = MH;
+      var g = tc.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, MW, MH);
+      g.drawImage(thumbFrameImg, (MW - dw) / 2, BY + (BH - dh) / 2, dw, dh);
       return tc.toDataURL('image/jpeg', 0.92);
     }
     function setEnhBusy(on) {
@@ -2418,7 +2427,14 @@
 
     document.getElementById('frameUpload').addEventListener('change', function (e) {
       var f = e.target.files[0]; if (!f) return;
-      applyFrame(URL.createObjectURL(f), null);
+      var url = URL.createObjectURL(f);
+      var strip = document.getElementById('frameStrip');
+      var im = document.createElement('img');
+      im.src = url;
+      im.addEventListener('click', function () { applyFrame(url, im); });
+      if (strip) strip.insertBefore(im, strip.firstChild);
+      applyFrame(url, im);
+      e.target.value = '';
     });
 
     // Drag the background image to reposition it.
@@ -2945,13 +2961,13 @@
     function syncLogoGrid() {
       var g = document.getElementById('logoGrid'); if (!g) return;
       var eff = badgeCorner || logoDefault();
-      Array.prototype.forEach.call(g.querySelectorAll('button'), function (b) {
+      Array.prototype.forEach.call(g.querySelectorAll('button[data-c]'), function (b) {
         b.classList.toggle('sel', b.getAttribute('data-c') === eff);
       });
     }
     (function () {
       var g = document.getElementById('logoGrid'); if (!g) return;
-      Array.prototype.forEach.call(g.querySelectorAll('button'), function (b) {
+      Array.prototype.forEach.call(g.querySelectorAll('button[data-c]'), function (b) {
         b.addEventListener('click', function () {
           badgeCorner = b.getAttribute('data-c');
           syncLogoGrid(); drawThumb();
