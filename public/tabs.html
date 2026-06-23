@@ -146,7 +146,7 @@
     .segmented { display:flex; flex-wrap:wrap; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px; margin-bottom:14px; }
     .segmented button { flex:1 1 70px; width:auto; background:transparent; color:var(--text-soft); padding:9px 0; border-radius:7px; font-size:13px; font-weight:600; }
     .segmented button.sel { background:var(--accent); color:#fff; }
-    .thumbsticky { position:sticky; top:0; z-index:5; background:var(--bg); padding:6px 0 8px; }
+    .thumbsticky { position:sticky; top:0; z-index:5; background:var(--bg); padding:6px 0 0; }
     #thumbCanvas { width:100%; height:auto; border-radius:12px; display:block; background:#000; touch-action:none; cursor:grab; }
     #thumbCanvas:active { cursor:grabbing; }
     .ctlval { color:var(--text-soft); font-weight:600; font-size:13px; }
@@ -418,7 +418,7 @@
         <button type="button" data-border="none">None</button>
       </div>
       <div id="borderCustomRow" class="swatchpick" style="display:none; margin-top:10px"></div>
-      <div class="thumbsticky"><canvas id="thumbCanvas" width="1280" height="720"></canvas><div style="display:flex;justify-content:flex-end;padding:7px 2px 0"><button type="button" id="compareBtn" style="display:none;width:auto;align-items:center;gap:5px;padding:5px 13px;font-size:12px;font-weight:700;letter-spacing:.02em;background:var(--chip);color:var(--text-soft);border:1px solid rgba(255,255,255,.14);border-radius:999px">&#8646; Edited</button></div></div>
+      <div class="thumbsticky"><canvas id="thumbCanvas" width="1280" height="720"></canvas></div><div style="display:flex;justify-content:flex-end;padding:7px 2px 0"><button type="button" id="compareBtn" style="display:none;width:auto;align-items:center;gap:5px;padding:5px 13px;font-size:12px;font-weight:700;letter-spacing:.02em;background:var(--chip);color:var(--text-soft);border:1px solid rgba(255,255,255,.14);border-radius:999px">&#8646; Edited</button></div>
       <p class="genstatus" id="thumbStatus"></p>
 
       <label>Frame from your film</label>
@@ -533,6 +533,16 @@
 
       <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin:-4px 0 2px;cursor:pointer"><input type="checkbox" id="fitToggle" checked>Fit each row to width</label>
       <p class="hint" style="margin:0 0 14px">Off: each word keeps its own size — the row just gets wider.</p>
+
+      <label style="margin-top:2px">3-D depth</label>
+      <div id="d3panel">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:10px"><input type="checkbox" id="d3On">3-D block letters</label>
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div class="tt-block" style="flex:1 1 200px;min-width:0"><span class="tt-label">Side color</span><div id="d3Sw" class="swatchpick"></div></div>
+          <div class="tt-block" style="flex:0 0 auto"><span class="tt-label">Depth</span><div class="dial" id="dD3Depth" style="min-width:80px"><span class="dk">Depth</span><span class="dv" id="d3DepthVal">8</span></div></div>
+          <div class="tt-block" style="flex:0 0 auto"><span class="tt-label">Direction</span><div class="dial" id="dD3Angle" style="min-width:80px"><span class="dk">Angle</span><span class="dv" id="d3AngleVal">45&deg;</span></div></div>
+        </div>
+      </div>
 
       <label style="margin-top:2px">Style settings</label>
       <div id="fxShadow">
@@ -672,7 +682,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v0.84</div>
+    <div class="foot">Magic Marquee · v0.86</div>
   </div>
 
   <script>
@@ -756,6 +766,7 @@
     let bgOffsetY = 0;
     let textScale = 1;           // global text-size multiplier
     let textTrack = 0;           // headline letter spacing in px; the auto-fit re-measures with it
+    var d3 = { on: false, depth: 8, angle: 45, color: '#000000' };  // 3-D extrude: depth px, push direction deg, side colour
     let freeText = false;        // false = fit each row to width; true = absolute per-word sizing
     let customTextColor = '#ffffff';                       // custom: base color for non-popped words
     let customOutline = { on: false, width: 8, color: '#000000' }; // custom: text outline
@@ -1699,6 +1710,19 @@
       gradeReady = true;
     }
 
+    // 3-D extrude: draw the word stepped along the push direction in the side colour, behind
+    // the face. Shadow is suppressed on the copies so the depth stays crisp. Call with the
+    // current ctx.font already set; the face/outline/shadow are drawn on top afterwards.
+    function extrude3D(ctx, txt, x, y) {
+      if (!d3.on || d3.depth <= 0) return;
+      var rad = d3.angle * Math.PI / 180, ux = Math.cos(rad), uy = Math.sin(rad);
+      var sc = ctx.shadowColor, sb = ctx.shadowBlur, sox = ctx.shadowOffsetX, soy = ctx.shadowOffsetY;
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+      ctx.fillStyle = d3.color;
+      for (var e = d3.depth; e >= 1; e--) ctx.fillText(txt, x + ux * e, y + uy * e);
+      ctx.shadowColor = sc; ctx.shadowBlur = sb; ctx.shadowOffsetX = sox; ctx.shadowOffsetY = soy;
+    }
+
     // BLOCKS style: each line on its own black rounded block, white/accent words.
     function drawOverlayBlocks(ctx, W, H) {
       ctx.letterSpacing = textTrack + 'px';
@@ -1716,6 +1740,7 @@
         var spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
           ctx.font = '800 ' + (b.fs * (b.line[k].s || 1)) + 'px Montserrat, sans-serif';
+          extrude3D(ctx, b.line[k].t, cx, baseline);
           ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
           ctx.fillText(b.line[k].t, cx, baseline);
           cx += ctx.measureText(b.line[k].t).width + spaceW;
@@ -1775,6 +1800,7 @@
         for (var k = 0; k < b.line.length; k++) {
           var w = b.line[k];
           ctx.font = '800 ' + (b.fs * (w.s || 1)) + 'px Montserrat, sans-serif';
+          extrude3D(ctx, w.t, cx, baseline);
           if (!isC || customShadow.on) {
             ctx.fillStyle = isC ? hexToRgba(customShadow.color, customShadow.strength) : 'rgba(0,0,0,0.55)';
             ctx.fillText(w.t, cx + Math.max(2, b.fs * 0.02), baseline + Math.max(3, b.fs * 0.03));
@@ -1854,6 +1880,7 @@
         var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
           ctx.font = '800 ' + (b.fs * (b.line[k].s || 1)) + 'px Montserrat, sans-serif';
+          extrude3D(ctx, b.line[k].t, cx, baseline);
           ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
           ctx.fillText(b.line[k].t, cx, baseline);
           cx += ctx.measureText(b.line[k].t).width + spaceW;
@@ -1885,6 +1912,7 @@
         var baseline = b.y + opts.padY + b.asc, cx = b.x + opts.padX, spaceW = ctx.measureText(' ').width;
         for (var k = 0; k < b.line.length; k++) {
           ctx.font = '800 ' + (b.fs * (b.line[k].s || 1)) + 'px Montserrat, sans-serif';
+          extrude3D(ctx, b.line[k].t, cx, baseline);
           ctx.fillStyle = b.line[k].b ? accentColor : '#ffffff';
           ctx.fillText(b.line[k].t, cx, baseline);
           cx += ctx.measureText(b.line[k].t).width + spaceW;
@@ -2626,6 +2654,13 @@
     makeDial('dSha', { get: function () { return grade.sharp; }, set: function (v) { grade.sharp = v; }, min: 0, max: 1, step: 0.05, def: 0, fmt: pct, onInput: finalGrade, onChange: finalGrade });
     makeDial('dSize', { get: function () { return textScale; }, set: function (v) { textScale = v; }, min: 0.7, max: 1.4, step: 0.05, def: 1, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
     makeDial('dTrack', { get: function () { return textTrack; }, set: function (v) { textTrack = v; }, min: -8, max: 20, step: 1, def: 0, fmt: function (v) { v = Math.round(v); return v > 0 ? '+' + v : '' + v; }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+    makeDial('dD3Depth', { get: function () { return d3.depth; }, set: function (v) { d3.depth = v; }, min: 0, max: 20, step: 1, def: 8, fmt: function (v) { return '' + Math.round(v); }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+    makeDial('dD3Angle', { get: function () { return d3.angle; }, set: function (v) { d3.angle = v; }, min: 0, max: 360, step: 5, def: 45, fmt: function (v) { return Math.round(v) + '\u00b0'; }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+    (function () {
+      var d3c = document.getElementById('d3On');
+      if (d3c) d3c.addEventListener('change', function () { d3.on = d3c.checked; drawThumb(); });
+      if (document.getElementById('d3Sw')) buildSwatchPick(document.getElementById('d3Sw'), function () { return d3.color; }, function (col) { d3.color = col; drawThumb(); });
+    })();
     makeDial('dShadowStr', { get: function () { return (styleFx[thumbStyle] && styleFx[thumbStyle].strength != null) ? styleFx[thumbStyle].strength : 1; }, set: function (v) { if (styleFx[thumbStyle]) styleFx[thumbStyle].strength = v; }, min: 0, max: 1.5, step: 0.05, def: 1, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
     makeDial('dShadowAngle', { get: function () { var f = styleFx[thumbStyle]; return (f && f.angle != null) ? f.angle : 0; }, set: function (v) { if (styleFx[thumbStyle]) styleFx[thumbStyle].angle = v; }, min: 0, max: 360, step: 5, def: 0, fmt: function (v) { return Math.round(v) + '\u00b0'; }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
     makeDial('dShadowReach', { get: function () { var f = styleFx[thumbStyle]; return (f && f.extent != null) ? f.extent : 0.68; }, set: function (v) { if (styleFx[thumbStyle]) styleFx[thumbStyle].extent = v; }, min: 0.1, max: 1, step: 0.02, def: 0.68, fmt: pct, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
@@ -2787,7 +2822,7 @@
     function captureCustom() {
       var sc = styleFx.custom || { on: false, strength: 1, color: '#000000' };
       return {
-        pos: thumbPos, scale: textScale, track: textTrack, accent: accentColor,
+        pos: thumbPos, scale: textScale, track: textTrack, threeD: { on: d3.on, depth: d3.depth, angle: d3.angle, color: d3.color }, accent: accentColor,
         border: borderStyle, borderCustom: borderCustom, badge: badgeCorner,
         textColor: customTextColor,
         outline: { on: customOutline.on, width: customOutline.width, color: customOutline.color },
@@ -2803,6 +2838,9 @@
       var ts = document.getElementById('fxShadowTextOn'); if (ts) ts.checked = !!customShadow.on;
       var so = document.getElementById('fxShadowOn'); if (so) so.checked = !!(styleFx.custom && styleFx.custom.on);
       var ft = document.getElementById('fitToggle'); if (ft) ft.checked = !freeText;
+      var d3c = document.getElementById('d3On'); if (d3c) d3c.checked = !!d3.on;
+      setDV('dD3Depth', '' + Math.round(d3.depth)); setDV('dD3Angle', Math.round(d3.angle) + '\u00b0');
+      if (document.getElementById('d3Sw')) buildSwatchPick(document.getElementById('d3Sw'), function () { return d3.color; }, function (col) { d3.color = col; drawThumb(); });
       setDV('dOutlineW', Math.round(customOutline.width));
       setDV('dTextShadowStr', Math.round(customShadow.strength * 100) + '%');
       setDV('dShadowStr', Math.round(((styleFx.custom && styleFx.custom.strength) || 0) * 100) + '%');
@@ -2833,6 +2871,7 @@
       if (s.pos) thumbPos = s.pos;
       if (s.scale != null) textScale = s.scale;
       if (s.track != null) textTrack = s.track;
+      if (s.threeD) d3 = { on: !!s.threeD.on, depth: (s.threeD.depth != null ? s.threeD.depth : 8), angle: (s.threeD.angle != null ? s.threeD.angle : 45), color: s.threeD.color || '#000000' };
       if (s.accent) accentColor = s.accent;
       if (s.border) borderStyle = s.border;
       if (s.borderCustom) borderCustom = s.borderCustom;
@@ -2857,7 +2896,7 @@
     // All synchronous, so the screen only repaints once (no flicker on the main canvas).
     function renderLookPreview(s, mini) {
       if (!mini) return;
-      var snap = { st: thumbStyle, pos: thumbPos, sc: textScale, tr: textTrack, ac: accentColor, bd: borderStyle, bc: borderCustom, bg: badgeCorner, tc: customTextColor, ol: customOutline, sh: customShadow, cs: customCase, scr: styleFx.custom, ft: freeText };
+      var snap = { st: thumbStyle, pos: thumbPos, sc: textScale, tr: textTrack, td: { on: d3.on, depth: d3.depth, angle: d3.angle, color: d3.color }, ac: accentColor, bd: borderStyle, bc: borderCustom, bg: badgeCorner, tc: customTextColor, ol: customOutline, sh: customShadow, cs: customCase, scr: styleFx.custom, ft: freeText };
       try {
         setCustomState(s); thumbStyle = 'custom';
         drawThumb();
@@ -2865,7 +2904,7 @@
         mc.clearRect(0, 0, mini.width, mini.height);
         if (cnv) mc.drawImage(cnv, 0, 0, 1280, 720, 0, 0, mini.width, mini.height);
       } catch (e) {}
-      thumbStyle = snap.st; thumbPos = snap.pos; textScale = snap.sc; textTrack = (snap.tr != null ? snap.tr : textTrack); accentColor = snap.ac; borderStyle = snap.bd; borderCustom = snap.bc; badgeCorner = snap.bg; customTextColor = snap.tc; customOutline = snap.ol; customShadow = snap.sh; customCase = snap.cs; styleFx.custom = snap.scr; freeText = snap.ft;
+      thumbStyle = snap.st; thumbPos = snap.pos; textScale = snap.sc; textTrack = (snap.tr != null ? snap.tr : textTrack); d3 = (snap.td != null ? snap.td : d3); accentColor = snap.ac; borderStyle = snap.bd; borderCustom = snap.bc; badgeCorner = snap.bg; customTextColor = snap.tc; customOutline = snap.ol; customShadow = snap.sh; customCase = snap.cs; styleFx.custom = snap.scr; freeText = snap.ft;
     }
     function renderTpls() {
       var list = document.getElementById('tplList'); if (!list) return;
@@ -2936,7 +2975,7 @@
         customCase = 'none';
         styleFx.custom = { on: false, strength: 1, color: '#000000' };
         accentColor = '#0eaaf5'; borderStyle = 'brand'; borderCustom = '#f45911';
-        badgeCorner = ''; textScale = 1; textTrack = 0; freeText = false; thumbPos = 'bl';
+        badgeCorner = ''; textScale = 1; textTrack = 0; d3 = { on: false, depth: 8, angle: 45, color: '#000000' }; freeText = false; thumbPos = 'bl';
         activeTplId = null;
         refreshCustomUI(); drawThumb(); renderTpls();
       });
