@@ -284,7 +284,7 @@
     .tab.done .tabring-arc { stroke:var(--good); }
     @keyframes tabspin { to { transform:rotate(360deg); } }
     /* ---- v0.55: custom color palette (border; per-style colors reuse it) ---- */
-    .swatchpick { display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:6px; align-items:center; justify-items:center; }
+    .swatchpick { display:grid; grid-template-columns:repeat(auto-fill, 30px); gap:6px; align-items:center; justify-items:center; justify-content:start; }
     .swatchpick button { width:100%; max-width:30px; aspect-ratio:1; height:auto; border-radius:50%; padding:0; border:2px solid transparent; cursor:pointer; }
     .swatchpick button.sel { border-color:#fff; box-shadow:0 0 0 2px var(--bg); }
     .swatchpick .swatch-any { width:100%; max-width:30px; aspect-ratio:1; height:auto; }
@@ -731,7 +731,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v1.6</div>
+    <div class="foot">Magic Marquee · v1.7</div>
   </div>
 
   <script>
@@ -1530,6 +1530,83 @@
       ctx.closePath();
     }
 
+    // Build a single merged path behind all the text rows, rounding both the outer corners and the
+    // concave notches where row widths change. Leaves the path ready to fill (caller fills once).
+    function blockUnionPath(ctx, blocks, opts) {
+      var rc = [], maxfs = 0;
+      for (var i = 0; i < blocks.length; i++) {
+        var pb = blocks[i];
+        var bpx = pb.fs * 0.16, bpy = pb.fs * 0.10, bgh = pb.blockH - 2 * opts.padY;
+        var bx = pb.x - bpx, by = (pb.y + opts.padY) - bpy;
+        rc.push({ l: bx, r: bx + pb.blockW + 2 * bpx, t: by, b: by + bgh + 2 * bpy });
+        if (pb.fs > maxfs) maxfs = pb.fs;
+      }
+      var rad = Math.max(8, maxfs * 0.10);
+      var ys = [];
+      for (var i = 0; i < rc.length; i++) { ys.push(rc[i].t); ys.push(rc[i].b); }
+      ys.sort(function (a, b) { return a - b; });
+      var uy = [];
+      for (var i = 0; i < ys.length; i++) { if (i === 0 || Math.abs(ys[i] - ys[i - 1]) > 0.5) uy.push(ys[i]); }
+      var bands = [];
+      for (var k = 0; k < uy.length - 1; k++) {
+        var by0 = uy[k], by1 = uy[k + 1], mid = (by0 + by1) / 2, L = Infinity, R = -Infinity, cov = false;
+        for (var i = 0; i < rc.length; i++) { if (rc[i].t <= mid && mid <= rc[i].b) { cov = true; if (rc[i].l < L) L = rc[i].l; if (rc[i].r > R) R = rc[i].r; } }
+        if (cov && R > L) {
+          var pv = bands[bands.length - 1];
+          if (pv && Math.abs(pv.l - L) < 0.5 && Math.abs(pv.r - R) < 0.5 && Math.abs(pv.y1 - by0) < 0.5) pv.y1 = by1;
+          else bands.push({ y0: by0, y1: by1, l: L, r: R });
+        }
+      }
+      var gap = false;
+      for (var k = 1; k < bands.length; k++) { if (Math.abs(bands[k].y0 - bands[k - 1].y1) > 0.5) gap = true; }
+      if (!bands.length || gap) {
+        ctx.beginPath();
+        for (var i = 0; i < rc.length; i++) {
+          var fw = rc[i].r - rc[i].l, fh = rc[i].b - rc[i].t, fr = Math.min(rad, fw / 2, fh / 2), fx = rc[i].l, fy = rc[i].t;
+          ctx.moveTo(fx + fr, fy);
+          ctx.arcTo(fx + fw, fy, fx + fw, fy + fh, fr);
+          ctx.arcTo(fx + fw, fy + fh, fx, fy + fh, fr);
+          ctx.arcTo(fx, fy + fh, fx, fy, fr);
+          ctx.arcTo(fx, fy, fx + fw, fy, fr);
+          ctx.closePath();
+        }
+        return;
+      }
+      var pts = [];
+      pts.push([bands[0].l, bands[0].y0]);
+      pts.push([bands[0].r, bands[0].y0]);
+      for (var k = 0; k < bands.length; k++) { pts.push([bands[k].r, bands[k].y1]); if (k < bands.length - 1) pts.push([bands[k + 1].r, bands[k].y1]); }
+      pts.push([bands[bands.length - 1].l, bands[bands.length - 1].y1]);
+      for (var k = bands.length - 1; k >= 0; k--) { pts.push([bands[k].l, bands[k].y0]); if (k > 0) pts.push([bands[k - 1].l, bands[k].y0]); }
+      var Q = [];
+      for (var i = 0; i < pts.length; i++) { var pr = Q.length ? Q[Q.length - 1] : null; if (!pr || Math.abs(pr[0] - pts[i][0]) > 0.5 || Math.abs(pr[1] - pts[i][1]) > 0.5) Q.push(pts[i]); }
+      if (Q.length >= 2 && Math.abs(Q[0][0] - Q[Q.length - 1][0]) < 0.5 && Math.abs(Q[0][1] - Q[Q.length - 1][1]) < 0.5) Q.pop();
+      if (Q.length < 3) {
+        ctx.beginPath();
+        var sw = bands[0].r - bands[0].l, sh = bands[bands.length - 1].y1 - bands[0].y0, sr = Math.min(rad, sw / 2, sh / 2), sx0 = bands[0].l, sy0 = bands[0].y0;
+        ctx.moveTo(sx0 + sr, sy0);
+        ctx.arcTo(sx0 + sw, sy0, sx0 + sw, sy0 + sh, sr);
+        ctx.arcTo(sx0 + sw, sy0 + sh, sx0, sy0 + sh, sr);
+        ctx.arcTo(sx0, sy0 + sh, sx0, sy0, sr);
+        ctx.arcTo(sx0, sy0, sx0 + sw, sy0, sr);
+        ctx.closePath();
+        return;
+      }
+      var n = Q.length;
+      ctx.beginPath();
+      for (var i = 0; i < n; i++) {
+        var p0 = Q[i], p1 = Q[(i + 1) % n], p2 = Q[(i + 2) % n];
+        var d01 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+        var d12 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+        var rr = Math.min(rad, d01 / 2, d12 / 2);
+        var sx = p1[0] + (p0[0] - p1[0]) / d01 * rr, sy = p1[1] + (p0[1] - p1[1]) / d01 * rr;
+        var ex = p1[0] + (p2[0] - p1[0]) / d12 * rr, ey = p1[1] + (p2[1] - p1[1]) / d12 * rr;
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        ctx.quadraticCurveTo(p1[0], p1[1], ex, ey);
+      }
+      ctx.closePath();
+    }
+
     function measureLine(ctx, str, fs) {
       ctx.font = hFont(fs);
       var m = ctx.measureText(str);
@@ -1855,19 +1932,7 @@
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, src, opts);
       if (styleFx.blocks.on) {
         ctx.fillStyle = hexToRgba(styleFx.blocks.color, styleFx.blocks.opacity);
-        ctx.beginPath();
-        for (var p = 0; p < blocks.length; p++) {
-          var pb = blocks[p];
-          var _bpx = pb.fs * 0.16, _bpy = pb.fs * 0.10, _bgh = pb.blockH - 2 * opts.padY;
-          var _x = pb.x - _bpx, _y = (pb.y + opts.padY) - _bpy, _w = pb.blockW + 2 * _bpx, _h = _bgh + 2 * _bpy;
-          var _r = Math.min(Math.max(6, pb.fs * 0.10), _w / 2, _h / 2);
-          ctx.moveTo(_x + _r, _y);
-          ctx.arcTo(_x + _w, _y, _x + _w, _y + _h, _r);
-          ctx.arcTo(_x + _w, _y + _h, _x, _y + _h, _r);
-          ctx.arcTo(_x, _y + _h, _x, _y, _r);
-          ctx.arcTo(_x, _y, _x + _w, _y, _r);
-          ctx.closePath();
-        }
+        blockUnionPath(ctx, blocks, opts);
         ctx.fill();
       }
       for (var i = 0; i < blocks.length; i++) {
