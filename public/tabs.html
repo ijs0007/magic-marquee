@@ -666,6 +666,10 @@
           <label style="margin:0">Saved looks</label>
           <button type="button" id="tplReset" style="flex:0 0 auto;width:auto;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:var(--text-soft);font-size:12.5px;font-weight:600;cursor:pointer">Start fresh</button>
         </div>
+        <div style="display:flex;align-items:center;gap:8px;margin:8px 0 2px">
+          <label style="margin:0;font-size:13px;color:var(--text-soft);flex:none">Opens with</label>
+          <select id="tplOpenWith" class="optsel" style="flex:1;min-width:0"></select>
+        </div>
         <p class="hint" style="margin:6px 0 8px">Tap a look to apply it; tap its name to rename. Your headline and image aren't saved. Up to 8.</p>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
           <input id="tplName" type="text" placeholder="Name this look" maxlength="24" style="flex:1;min-width:0;margin:0;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit">
@@ -752,7 +756,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v2.3</div>
+    <div class="foot">Magic Marquee · v2.4</div>
   </div>
 
   <script>
@@ -3178,6 +3182,25 @@
     function brandEdited() { try { return !!localStorage.getItem('mp_brand'); } catch (e) { return false; } }
     function updateBrand() { try { localStorage.setItem('mp_brand', JSON.stringify(captureCustom())); } catch (e) {} activeTplId = 'brand'; renderTpls(); }
     function resetBrand() { try { localStorage.removeItem('mp_brand'); } catch (e) {} applyCustom(brandLook().settings, 'brand'); }
+    function applyBlank() {
+      customTextColor = '#ffffff';
+      customOutline = { on: false, width: 8, color: '#000000' };
+      customShadow = { on: true, color: '#000000', strength: 0.55 };
+      customCase = 'none';
+      styleFx.custom = { on: false, strength: 1, color: '#000000' };
+      accentColor = '#0eaaf5'; borderStyle = 'brand'; borderCustom = '#f45911';
+      badgeCorner = ''; textScale = 1; textTrack = 0; headlineFont = 'Montserrat'; txItalic = false; txUnderline = false; txStrike = false; txThin = false; hlGrad = { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; txGrad = { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; d3 = { on: false, depth: 8, angle: 45, color: '#000000' }; freeText = false; thumbPos = 'bl';
+      activeTplId = null;
+      refreshCustomUI(); syncStyleFx(); drawThumb(); renderTpls();
+    }
+    function applyOpenWith() {
+      var pref = 'brand'; try { pref = localStorage.getItem('mp_openwith') || 'brand'; } catch (e) {}
+      if (pref === 'blank') { applyBlank(); return; }
+      if (pref !== 'brand') {
+        var arr = loadTpls(); for (var i = 0; i < arr.length; i++) { if (arr[i].id === pref) { applyCustom(arr[i].settings, arr[i].id); return; } }
+      }
+      applyCustom(brandLook().settings, 'brand');
+    }
     function loadTpls() { try { var a = JSON.parse(localStorage.getItem(TPL_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
     function saveTpls(a) { try { localStorage.setItem(TPL_KEY, JSON.stringify(a.slice(0, TPL_MAX))); } catch (e) {} }
     function captureCustom() {
@@ -3287,6 +3310,17 @@
     function renderTpls() {
       var list = document.getElementById('tplList'); if (!list) return;
       var arr = loadTpls();
+      var ow = document.getElementById('tplOpenWith');
+      if (ow) {
+        var owPref = 'brand'; try { owPref = localStorage.getItem('mp_openwith') || 'brand'; } catch (e) {}
+        ow.innerHTML = '';
+        var addOW = function (v, l) { var o = document.createElement('option'); o.value = v; o.textContent = l; ow.appendChild(o); };
+        addOW('brand', 'Brand');
+        arr.forEach(function (t) { if (t.id) addOW(t.id, t.name || 'Look'); });
+        addOW('blank', 'Blank');
+        var owHas = false; Array.prototype.forEach.call(ow.options, function (o) { if (o.value === owPref) owHas = true; });
+        ow.value = owHas ? owPref : 'brand';
+      }
       list.innerHTML = '';
       // Pinned Brand preset: always first, starred, undeletable.
       (function () {
@@ -3374,18 +3408,10 @@
       });
       if (nameI) nameI.addEventListener('keydown', function (e) { if (e.key === 'Enter' && save) { e.preventDefault(); save.click(); } });
       var reset = document.getElementById('tplReset');
-      if (reset) reset.addEventListener('click', function () {
-        customTextColor = '#ffffff';
-        customOutline = { on: false, width: 8, color: '#000000' };
-        customShadow = { on: true, color: '#000000', strength: 0.55 };
-        customCase = 'none';
-        styleFx.custom = { on: false, strength: 1, color: '#000000' };
-        accentColor = '#0eaaf5'; borderStyle = 'brand'; borderCustom = '#f45911';
-        badgeCorner = ''; textScale = 1; textTrack = 0; headlineFont = 'Montserrat'; txItalic = false; txUnderline = false; txStrike = false; txThin = false; hlGrad = { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; txGrad = { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; d3 = { on: false, depth: 8, angle: 45, color: '#000000' }; freeText = false; thumbPos = 'bl';
-        activeTplId = null;
-        refreshCustomUI(); drawThumb(); renderTpls();
-      });
-      applyCustom(brandLook().settings, 'brand');
+      if (reset) reset.addEventListener('click', applyBlank);
+      var ow0 = document.getElementById('tplOpenWith');
+      if (ow0) ow0.addEventListener('change', function () { try { localStorage.setItem('mp_openwith', ow0.value); } catch (e) {} });
+      applyOpenWith();
     })();
 
     function logoDefault() { return 'tl'; }
