@@ -150,8 +150,8 @@
     .posgrid { display:grid; grid-template-columns:repeat(3,40px); gap:6px; margin-bottom:18px; }
     .posgrid button { width:40px; height:40px; background:var(--chip); color:var(--text-soft); padding:0; border-radius:8px; font-size:16px; line-height:1; }
     .posgrid button.sel { background:var(--accent); color:#fff; }
-    .segmented { display:flex; flex-wrap:wrap; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px; margin-bottom:14px; }
-    .segmented button { flex:1 1 70px; width:auto; background:transparent; color:var(--text-soft); padding:9px 0; border-radius:7px; font-size:13px; font-weight:600; }
+    .segmented { display:flex; flex-wrap:wrap; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:3px; margin-bottom:12px; }
+    .segmented button { flex:1 1 70px; width:auto; background:transparent; color:var(--text-soft); padding:6px 0; border-radius:6px; font-size:13px; font-weight:600; }
     .segmented button.sel { background:var(--accent); color:#fff; }
     .thumbsticky { position:sticky; top:0; z-index:5; background:var(--bg); padding:6px 0 0; }
     #thumbCanvas { width:100%; height:auto; border-radius:12px; display:block; background:#000; touch-action:none; cursor:grab; }
@@ -731,7 +731,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v1.5</div>
+    <div class="foot">Magic Marquee · v1.6</div>
   </div>
 
   <script>
@@ -1854,20 +1854,21 @@
       }
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, src, opts);
       if (styleFx.blocks.on) {
-        var _minx = Infinity, _miny = Infinity, _maxx = -Infinity, _maxy = -Infinity, _maxfs = 0;
+        ctx.fillStyle = hexToRgba(styleFx.blocks.color, styleFx.blocks.opacity);
+        ctx.beginPath();
         for (var p = 0; p < blocks.length; p++) {
           var pb = blocks[p];
           var _bpx = pb.fs * 0.16, _bpy = pb.fs * 0.10, _bgh = pb.blockH - 2 * opts.padY;
-          var _x0 = pb.x - _bpx, _y0 = (pb.y + opts.padY) - _bpy;
-          var _x1 = _x0 + pb.blockW + 2 * _bpx, _y1 = _y0 + _bgh + 2 * _bpy;
-          if (_x0 < _minx) _minx = _x0;
-          if (_y0 < _miny) _miny = _y0;
-          if (_x1 > _maxx) _maxx = _x1;
-          if (_y1 > _maxy) _maxy = _y1;
-          if (pb.fs > _maxfs) _maxfs = pb.fs;
+          var _x = pb.x - _bpx, _y = (pb.y + opts.padY) - _bpy, _w = pb.blockW + 2 * _bpx, _h = _bgh + 2 * _bpy;
+          var _r = Math.min(Math.max(6, pb.fs * 0.10), _w / 2, _h / 2);
+          ctx.moveTo(_x + _r, _y);
+          ctx.arcTo(_x + _w, _y, _x + _w, _y + _h, _r);
+          ctx.arcTo(_x + _w, _y + _h, _x, _y + _h, _r);
+          ctx.arcTo(_x, _y + _h, _x, _y, _r);
+          ctx.arcTo(_x, _y, _x + _w, _y, _r);
+          ctx.closePath();
         }
-        roundRectPath(ctx, _minx, _miny, _maxx - _minx, _maxy - _miny, Math.max(6, _maxfs * 0.10));
-        ctx.fillStyle = hexToRgba(styleFx.blocks.color, styleFx.blocks.opacity); ctx.fill();
+        ctx.fill();
       }
       for (var i = 0; i < blocks.length; i++) {
         var b = blocks[i];
