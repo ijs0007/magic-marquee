@@ -752,7 +752,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v2.2</div>
+    <div class="foot">Magic Marquee · v2.3</div>
   </div>
 
   <script>
@@ -3174,6 +3174,10 @@
     var TPL_KEY = 'mp_customtpls', TPL_MAX = 8;
     let activeTplId = null;
     var BRAND_LOOK = { id: 'brand', name: 'Brand', settings: { pos: 'bl', scale: 1, track: 0, font: 'Montserrat', italic: false, underline: false, strike: false, thin: false, hlGrad: { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, txGrad: { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, threeD: { on: false, depth: 8, angle: 45, color: '#000000' }, accent: '#0eaaf5', border: 'brand', borderCustom: '#f45911', badge: 'tl', textColor: '#ffffff', outline: { on: false, width: 8, color: '#000000' }, shadow: { on: true, color: '#000000', strength: 0.55 }, scrim: { on: true, strength: 1, color: '#000000' }, case: 'none', freeText: false } };
+    function brandLook() { try { var o = JSON.parse(localStorage.getItem('mp_brand') || 'null'); if (o && typeof o === 'object') return { id: 'brand', name: 'Brand', settings: o }; } catch (e) {} return BRAND_LOOK; }
+    function brandEdited() { try { return !!localStorage.getItem('mp_brand'); } catch (e) { return false; } }
+    function updateBrand() { try { localStorage.setItem('mp_brand', JSON.stringify(captureCustom())); } catch (e) {} activeTplId = 'brand'; renderTpls(); }
+    function resetBrand() { try { localStorage.removeItem('mp_brand'); } catch (e) {} applyCustom(brandLook().settings, 'brand'); }
     function loadTpls() { try { var a = JSON.parse(localStorage.getItem(TPL_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
     function saveTpls(a) { try { localStorage.setItem(TPL_KEY, JSON.stringify(a.slice(0, TPL_MAX))); } catch (e) {} }
     function captureCustom() {
@@ -3291,16 +3295,26 @@
         var thumb = document.createElement('canvas'); thumb.width = 192; thumb.height = 108;
         thumb.style.cssText = 'width:72px;height:40.5px;flex:none;border-radius:7px;cursor:pointer;background:#000;border:2px solid ' + (on ? 'var(--accent)' : 'rgba(255,255,255,0.14)') + (on ? ';box-shadow:0 0 0 2px var(--accent)' : '');
         thumb.title = 'Apply Brand';
-        thumb.addEventListener('click', function () { applyCustom(BRAND_LOOK.settings, 'brand'); });
+        thumb.addEventListener('click', function () { applyCustom(brandLook().settings, 'brand'); });
         var name = document.createElement('div');
         name.style.cssText = 'flex:1;min-width:0;padding:6px 8px;border-radius:8px;color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap';
         var star = document.createElement('span'); star.textContent = '★'; star.style.cssText = 'color:#f45911;flex:none';
         var nm = document.createElement('span'); nm.textContent = 'Brand'; nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis';
         name.appendChild(star); name.appendChild(nm);
         name.title = 'Your channel look (pinned)';
-        var lock = document.createElement('div'); lock.style.cssText = 'width:32px;height:32px;flex:none';
-        row.appendChild(thumb); row.appendChild(name); row.appendChild(lock); list.appendChild(row);
-        renderLookPreview(BRAND_LOOK.settings, thumb);
+        var acts = document.createElement('div'); acts.style.cssText = 'display:flex;gap:4px;flex:none';
+        var upd = document.createElement('button'); upd.type = 'button'; upd.textContent = 'Update'; upd.title = 'Save the current look as your Brand';
+        upd.style.cssText = 'padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#bbb;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap';
+        upd.addEventListener('click', function (e) { e.stopPropagation(); updateBrand(); });
+        acts.appendChild(upd);
+        if (brandEdited()) {
+          var rst = document.createElement('button'); rst.type = 'button'; rst.textContent = 'Reset'; rst.title = 'Reset Brand to the channel default';
+          rst.style.cssText = 'padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:var(--text-soft);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap';
+          rst.addEventListener('click', function (e) { e.stopPropagation(); resetBrand(); });
+          acts.appendChild(rst);
+        }
+        row.appendChild(thumb); row.appendChild(name); row.appendChild(acts); list.appendChild(row);
+        renderLookPreview(brandLook().settings, thumb);
       })();
       if (!arr.length) {
         var none = document.createElement('p'); none.className = 'hint'; none.style.margin = '0'; none.textContent = 'No custom looks yet — save one below.'; list.appendChild(none);
@@ -3371,7 +3385,7 @@
         activeTplId = null;
         refreshCustomUI(); drawThumb(); renderTpls();
       });
-      applyCustom(BRAND_LOOK.settings, 'brand');
+      applyCustom(brandLook().settings, 'brand');
     })();
 
     function logoDefault() { return 'tl'; }
