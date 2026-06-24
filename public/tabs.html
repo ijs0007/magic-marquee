@@ -756,7 +756,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v2.0</div>
+    <div class="foot">Magic Marquee · v2.1</div>
   </div>
 
   <script>
@@ -1952,7 +1952,7 @@
       if (!overlayLines.length) return;
       var opts = { W: W, H: H, targetW: W * 0.64 * textScale, maxFont: 170 * textScale, minFont: 34 * textScale, padX: 0, padY: 4, lineGap: rowGap, margin: 56, anchor: thumbPos };
       var src = overlayLines;
-      if (thumbStyle === 'custom' && customCase !== 'none') {
+      if (customCase !== 'none') {
         src = overlayLines.map(function (ln) { return ln.map(function (wd) { return { t: caseT(wd.t), s: wd.s, b: wd.b }; }); });
       }
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, src, opts);
@@ -1969,22 +1969,22 @@
         var cx = b.x + opts.padX;
         var spaceW = ctx.measureText(' ').width;
         var isC = (thumbStyle === 'custom');
-        var _tbx = (isC && txGrad.on) ? (txGrad.whole ? groupBox(blocks) : [b.x, b.y, b.blockW, b.blockH]) : null; var _txg = _tbx ? makeGrad(ctx, txGrad, _tbx[0], _tbx[1], _tbx[2], _tbx[3]) : null;
+        var _tbx = (txGrad.on) ? (txGrad.whole ? groupBox(blocks) : [b.x, b.y, b.blockW, b.blockH]) : null; var _txg = _tbx ? makeGrad(ctx, txGrad, _tbx[0], _tbx[1], _tbx[2], _tbx[3]) : null;
         for (var k = 0; k < b.line.length; k++) {
           var w = b.line[k];
           ctx.font = hFont(b.fs * (w.s || 1), w);
           extrude3D(ctx, w.t, cx, baseline);
-          if ((!isC || customShadow.on) && !styleFx.blocks.on) {
-            ctx.fillStyle = isC ? hexToRgba(customShadow.color, customShadow.strength) : 'rgba(0,0,0,0.55)';
+          if (customShadow.on && !styleFx.blocks.on) {
+            ctx.fillStyle = hexToRgba(customShadow.color, customShadow.strength);
             ctx.fillText(w.t, cx + Math.max(2, b.fs * 0.02), baseline + Math.max(3, b.fs * 0.03));
           }
-          if (isC && customOutline.on && customOutline.width > 0) {
+          if (customOutline.on && customOutline.width > 0) {
             ctx.lineJoin = 'round'; ctx.lineWidth = customOutline.width; ctx.strokeStyle = customOutline.color;
             ctx.strokeText(w.t, cx, baseline);
           }
-          ctx.fillStyle = w.c || (isC && _txg) || customTextColor;
+          ctx.fillStyle = w.c || _txg || customTextColor;
           ctx.fillText(w.t, cx, baseline);
-          var _ww = ctx.measureText(w.t).width; if (w.u || w.k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (w.s || 1), w.c || (isC && _txg) || customTextColor, w.u, w.k); cx += _ww + spaceW;
+          var _ww = ctx.measureText(w.t).width; if (w.u || w.k) txDeco(ctx, cx, cx + _ww, baseline, b.fs * (w.s || 1), w.c || _txg || customTextColor, w.u, w.k); cx += _ww + spaceW;
         }
       }
     }
@@ -3380,8 +3380,8 @@
       var sb = document.getElementById('fxShadow'), bb = document.getElementById('fxBlocks'), cc = document.getElementById('fxCustom');
       if (sb) sb.style.display = isBlocks ? 'none' : '';
       if (bb) bb.style.display = '';
-      if (cc) cc.style.display = (thumbStyle === 'custom') ? '' : 'none';
-      var tc = document.getElementById('tplCustom'); if (tc) tc.style.display = (thumbStyle === 'custom') ? '' : 'none';
+      if (cc) cc.style.display = '';
+      var tc = document.getElementById('tplCustom'); if (tc) tc.style.display = '';
       var bon = document.getElementById('fxBlocksOn'); if (bon) bon.checked = !!styleFx.blocks.on;
       var bonRow = document.getElementById('fxBlocksOnRow'); if (bonRow) bonRow.style.display = isBlocks ? 'none' : '';
       var ov = document.getElementById('blockOpVal'); if (ov) ov.textContent = Math.round(styleFx.blocks.opacity * 100) + '%';
