@@ -455,10 +455,6 @@
       <div id="thumbPlaceholder" class="card placeholder"><div class="ph169"><span class="ph169-cap">16:9 preview</span></div><p class="ph-hint">Head to <b>Publish</b>, send a film, then tap <b>Make thumbnail</b> — your studio opens here.</p></div>
       <div id="thumbCard" class="card" style="display:none">
       <label id="thumbHeading" style="font-size:15px; color:var(--text); margin-bottom:12px; cursor:pointer; user-select:none; -webkit-user-select:none">Thumbnail</label>
-      <div id="styleToggle" class="segmented">
-        <button type="button" data-style="cinematic" class="sel">Brand</button>
-        <button type="button" data-style="custom" id="styleCustomBtn">Custom</button>
-      </div>
       <label>Border</label>
       <div id="borderToggle" class="segmented">
         <button type="button" data-border="brand" class="sel">Brand</button>
@@ -756,7 +752,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v2.1</div>
+    <div class="foot">Magic Marquee · v2.2</div>
   </div>
 
   <script>
@@ -821,13 +817,13 @@
     let showOriginal = false;     // compare toggle: true = show the untouched original
     let badgeHidden = false;      // logo corner: true = don't draw the brand badge
     let thumbPos = 'bl';          // text anchor: [t/m/b][l/c/r]
-    let thumbStyle = 'cinematic'; // 'cinematic' (scrim + big bottom text) | 'blocks'
+    let thumbStyle = 'custom'; // single editor (scrim store = styleFx.custom); was Brand/Custom toggle
     let badgeCorner = ''; // '' = per-style default; else tl/tr/bl/br (user override)
     let borderCustom = '#ffffff'; // custom border color
     var styleFx = {
       cinematic: { on: true, strength: 1, color: '#000000' },
       blocks:    { on: false, color: '#000000', opacity: 1 },
-      custom:    { on: false, strength: 1, color: '#000000' }
+      custom:    { on: true, strength: 1, color: '#000000' }
     };
     let montserratReady = false;
     var headlineFont = 'Montserrat';   // chosen headline font family (the brand badge stays Montserrat)
@@ -2054,7 +2050,7 @@
       drawScrim(ctx, 1280, 720);
       if (!overlayHidden) drawOverlayClean(ctx, 1280, 720);
       drawBorder(ctx, 1280, 720, true);
-      drawBadge(ctx, 1280, 720, badgeCorner || (thumbStyle === 'custom' ? 'bl' : 'tl'), true);
+      drawBadge(ctx, 1280, 720, badgeCorner || 'tl', true);
     }
 
     function overlayLinesToText(lines) {
@@ -3142,22 +3138,6 @@
       if (lr) lr.addEventListener('click', function () { cbState[cbSel].l = 0; cbSyncHandle(); finalGrade(); });
     })();
 
-    (function () {
-      var seg = document.getElementById('styleToggle');
-      Array.prototype.forEach.call(seg.querySelectorAll('button'), function (btn) {
-        btn.addEventListener('click', function () {
-          thumbStyle = btn.getAttribute('data-style');
-          Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { b.classList.remove('sel'); });
-          btn.classList.add('sel');
-          var defPos = { cinematic: 'bl', blocks: 'tr', custom: 'bl' };
-          thumbPos = defPos[thumbStyle] || 'bl'; // sensible default per style
-          buildPosGrid();
-          syncLogoGrid();
-          syncStyleFx();
-          drawThumb();
-        });
-      });
-    })();
 
     // Free text sizing: off = each word keeps its own size and the row grows wider
     // instead of squeezing the other words. Sticky on this device.
@@ -3193,6 +3173,7 @@
     // ---- Custom-room saved looks (templates) ----
     var TPL_KEY = 'mp_customtpls', TPL_MAX = 8;
     let activeTplId = null;
+    var BRAND_LOOK = { id: 'brand', name: 'Brand', settings: { pos: 'bl', scale: 1, track: 0, font: 'Montserrat', italic: false, underline: false, strike: false, thin: false, hlGrad: { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, txGrad: { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, threeD: { on: false, depth: 8, angle: 45, color: '#000000' }, accent: '#0eaaf5', border: 'brand', borderCustom: '#f45911', badge: 'tl', textColor: '#ffffff', outline: { on: false, width: 8, color: '#000000' }, shadow: { on: true, color: '#000000', strength: 0.55 }, scrim: { on: true, strength: 1, color: '#000000' }, case: 'none', freeText: false } };
     function loadTpls() { try { var a = JSON.parse(localStorage.getItem(TPL_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
     function saveTpls(a) { try { localStorage.setItem(TPL_KEY, JSON.stringify(a.slice(0, TPL_MAX))); } catch (e) {} }
     function captureCustom() {
@@ -3280,6 +3261,7 @@
       setCustomState(s);
       activeTplId = id || null;
       refreshCustomUI();
+      syncStyleFx();
       drawThumb();
       renderTpls();
     }
@@ -3302,8 +3284,26 @@
       var list = document.getElementById('tplList'); if (!list) return;
       var arr = loadTpls();
       list.innerHTML = '';
+      // Pinned Brand preset: always first, starred, undeletable.
+      (function () {
+        var on = (activeTplId === 'brand');
+        var row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px';
+        var thumb = document.createElement('canvas'); thumb.width = 192; thumb.height = 108;
+        thumb.style.cssText = 'width:72px;height:40.5px;flex:none;border-radius:7px;cursor:pointer;background:#000;border:2px solid ' + (on ? 'var(--accent)' : 'rgba(255,255,255,0.14)') + (on ? ';box-shadow:0 0 0 2px var(--accent)' : '');
+        thumb.title = 'Apply Brand';
+        thumb.addEventListener('click', function () { applyCustom(BRAND_LOOK.settings, 'brand'); });
+        var name = document.createElement('div');
+        name.style.cssText = 'flex:1;min-width:0;padding:6px 8px;border-radius:8px;color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap';
+        var star = document.createElement('span'); star.textContent = '★'; star.style.cssText = 'color:#f45911;flex:none';
+        var nm = document.createElement('span'); nm.textContent = 'Brand'; nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis';
+        name.appendChild(star); name.appendChild(nm);
+        name.title = 'Your channel look (pinned)';
+        var lock = document.createElement('div'); lock.style.cssText = 'width:32px;height:32px;flex:none';
+        row.appendChild(thumb); row.appendChild(name); row.appendChild(lock); list.appendChild(row);
+        renderLookPreview(BRAND_LOOK.settings, thumb);
+      })();
       if (!arr.length) {
-        var none = document.createElement('p'); none.className = 'hint'; none.style.margin = '0'; none.textContent = 'No saved looks yet.'; list.appendChild(none);
+        var none = document.createElement('p'); none.className = 'hint'; none.style.margin = '0'; none.textContent = 'No custom looks yet — save one below.'; list.appendChild(none);
       }
       arr.forEach(function (t, i) {
         var row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px';
@@ -3371,10 +3371,10 @@
         activeTplId = null;
         refreshCustomUI(); drawThumb(); renderTpls();
       });
-      renderTpls();
+      applyCustom(BRAND_LOOK.settings, 'brand');
     })();
 
-    function logoDefault() { return thumbStyle === 'cinematic' ? 'tl' : 'bl'; }
+    function logoDefault() { return 'tl'; }
     function syncStyleFx() {
       var isBlocks = (thumbStyle === 'blocks');
       var sb = document.getElementById('fxShadow'), bb = document.getElementById('fxBlocks'), cc = document.getElementById('fxCustom');
