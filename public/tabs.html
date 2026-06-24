@@ -597,9 +597,15 @@
       </div>
       <div id="fxBlocks" style="display:none">
         <label id="fxBlocksOnRow" style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:10px"><input type="checkbox" id="fxBlocksOn">Text blocks</label>
-        <div class="texttools">
-          <div class="tt-block"><span class="tt-label">Block color</span><div id="fxBlockSw" class="swatchpick"></div></div>
-          <div class="tt-block"><span class="tt-label">Block opacity</span><div class="dial" id="dBlockOp" style="min-width:88px"><span class="dk">Opacity</span><span class="dv" id="blockOpVal">100%</span></div></div>
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div class="tt-block" style="flex:1 1 200px;min-width:0">
+            <span class="tt-label">Block color</span>
+            <div id="fxBlockSw" class="swatchpick"></div>
+          </div>
+          <div class="tt-block" style="flex:0 0 auto">
+            <span class="tt-label">Block opacity</span>
+            <div class="dial" id="dBlockOp" style="min-width:88px"><span class="dk">Opacity</span><span class="dv" id="blockOpVal">100%</span></div>
+          </div>
         </div>
       </div>
       <div id="fxCustom" style="display:none">
@@ -725,7 +731,7 @@
     </div>
 
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v1.4</div>
+    <div class="foot">Magic Marquee · v1.5</div>
   </div>
 
   <script>
@@ -1848,12 +1854,20 @@
       }
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, src, opts);
       if (styleFx.blocks.on) {
+        var _minx = Infinity, _miny = Infinity, _maxx = -Infinity, _maxy = -Infinity, _maxfs = 0;
         for (var p = 0; p < blocks.length; p++) {
           var pb = blocks[p];
           var _bpx = pb.fs * 0.16, _bpy = pb.fs * 0.10, _bgh = pb.blockH - 2 * opts.padY;
-          roundRectPath(ctx, pb.x - _bpx, (pb.y + opts.padY) - _bpy, pb.blockW + 2 * _bpx, _bgh + 2 * _bpy, Math.max(6, pb.fs * 0.10));
-          ctx.fillStyle = hexToRgba(styleFx.blocks.color, styleFx.blocks.opacity); ctx.fill();
+          var _x0 = pb.x - _bpx, _y0 = (pb.y + opts.padY) - _bpy;
+          var _x1 = _x0 + pb.blockW + 2 * _bpx, _y1 = _y0 + _bgh + 2 * _bpy;
+          if (_x0 < _minx) _minx = _x0;
+          if (_y0 < _miny) _miny = _y0;
+          if (_x1 > _maxx) _maxx = _x1;
+          if (_y1 > _maxy) _maxy = _y1;
+          if (pb.fs > _maxfs) _maxfs = pb.fs;
         }
+        roundRectPath(ctx, _minx, _miny, _maxx - _minx, _maxy - _miny, Math.max(6, _maxfs * 0.10));
+        ctx.fillStyle = hexToRgba(styleFx.blocks.color, styleFx.blocks.opacity); ctx.fill();
       }
       for (var i = 0; i < blocks.length; i++) {
         var b = blocks[i];
