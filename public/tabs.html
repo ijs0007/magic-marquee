@@ -81,6 +81,7 @@
       min-height:80px; resize:vertical; line-height:1.5;
     }
     .genstatus { font-size:13px; margin:10px 0 16px; }
+    .genstatus:empty { display:none; }
     .checkrow { display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--text); font-weight:400; line-height:1.45; margin:0 0 16px; cursor:pointer; }
     .checkrow input { width:auto; margin:2px 0 0; flex:none; cursor:pointer; accent-color:var(--accent); }
     .checkrow b { font-weight:600; }
@@ -299,8 +300,8 @@
     .canvaswrap { z-index:6; background:var(--bg); padding:6px 0 0; }
     .canvaswrap.pinned { position:sticky; top:0; }
     .canvasframe { position:relative; }
-    .pinbtn { position:absolute; top:8px; right:8px; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.18); color:rgba(255,255,255,.78); cursor:pointer; z-index:3; }
-    .pinbtn svg { width:15px; height:15px; }
+    .pinbtn { width:auto; display:inline-flex; align-items:center; justify-content:center; padding:5px 11px; border-radius:999px; background:var(--chip); border:1px solid rgba(255,255,255,.14); color:var(--text-soft); cursor:pointer; }
+    .pinbtn svg { width:15px; height:15px; display:block; }
     .pinbtn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
     .sectabs { position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0 0; }
     .sectabbar { display:flex; gap:2px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:3px; }
@@ -471,8 +472,8 @@
       <div id="thumbPlaceholder" class="card placeholder"><div class="ph169"><span class="ph169-cap">16:9 preview</span></div><p class="ph-hint">Head to <b>Publish</b>, send a film, then tap <b>Make thumbnail</b> — your studio opens here.</p></div>
       <div id="thumbCard" class="card" style="display:none">
       <div class="canvaswrap" id="canvasWrap">
-        <div class="canvasframe"><canvas id="thumbCanvas" width="1280" height="720"></canvas><button type="button" id="canvasPinBtn" class="pinbtn on" aria-label="Unpin preview" title="Pin or unpin the preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 2px 0"><button type="button" id="popoutBtn">&#8599; Pop out</button><button type="button" id="compareBtn" style="display:none;width:auto;align-items:center;gap:5px;padding:5px 13px;font-size:12px;font-weight:700;letter-spacing:.02em;background:var(--chip);color:var(--text-soft);border:1px solid rgba(255,255,255,.14);border-radius:999px">&#8646; Edited</button></div>
+        <div class="canvasframe"><canvas id="thumbCanvas" width="1280" height="720"></canvas></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 2px 0"><button type="button" id="popoutBtn">&#8599; Pop out</button><div style="display:flex;align-items:center;gap:8px;margin-left:auto"><button type="button" id="compareBtn" style="display:none;width:auto;align-items:center;gap:5px;padding:5px 13px;font-size:12px;font-weight:700;letter-spacing:.02em;background:var(--chip);color:var(--text-soft);border:1px solid rgba(255,255,255,.14);border-radius:999px">&#8646; Edited</button><button type="button" id="canvasPinBtn" class="pinbtn on" aria-label="Unpin preview" title="Pin or unpin the preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button></div></div>
         <p class="genstatus" id="thumbStatus"></p>
       </div>
       <div class="sectabs" id="secTabs">
@@ -812,7 +813,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v2.7</div>
+    <div class="foot">Magic Marquee · v2.8</div>
   </div>
 
   <script>
@@ -2551,7 +2552,7 @@
       await Promise.all([textP, framesP]);
       busyDone();
       if (thumbStatus.textContent.indexOf("Couldn't") === -1) {
-        thumbStatus.innerHTML = '<span style="color:#34c759">Ready — tweak anything, then set it.</span>';
+        thumbStatus.innerHTML = '';
       }
       setThumbBtn.disabled = false;
     }
