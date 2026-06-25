@@ -690,6 +690,7 @@
       <div id="borderToggle" class="segmented">
         <button type="button" data-border="brand" class="sel">Brand</button>
         <button type="button" data-border="custom">Custom</button>
+        <button type="button" data-border="film">Film</button>
         <button type="button" data-border="none">None</button>
       </div>
       <div id="borderCustomRow" class="swatchpick" style="display:none; margin-top:10px"></div>
@@ -818,7 +819,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.1</div>
+    <div class="foot">Magic Marquee · v3.2</div>
   </div>
 
   <script>
@@ -2051,8 +2052,26 @@
       }
     }
 
+    function drawFilmStrip(ctx, W, H) {
+      var barH = Math.round(H * 0.085);
+      ctx.fillStyle = '#0b0b0b';
+      ctx.fillRect(0, 0, W, barH); ctx.fillRect(0, H - barH, W, barH);
+      var holeW = Math.round(barH * 0.6), holeH = Math.round(barH * 0.4), rad = Math.round(holeH * 0.3);
+      var gap = Math.round(holeW * 0.55), pitch = holeW + gap;
+      var n = Math.floor((W + gap) / pitch);
+      var startX = Math.round((W - (n * pitch - gap)) / 2);
+      var topY = Math.round((barH - holeH) / 2), botY = H - barH + topY;
+      ctx.fillStyle = '#f4f4f2';
+      for (var i = 0; i < n; i++) {
+        var hx = startX + i * pitch;
+        roundRectPath(ctx, hx, topY, holeW, holeH, rad); ctx.fill();
+        roundRectPath(ctx, hx, botY, holeW, holeH, rad); ctx.fill();
+      }
+    }
+
     function drawBorder(ctx, W, H, thin) {
       if (borderStyle === 'none') return;
+      if (borderStyle === 'film') { drawFilmStrip(ctx, W, H); return; }
       var bw = thin ? 11 : 20, inset = thin ? 7 : 12, r = thin ? 28 : 36;
       var col = borderStyle === 'accent' ? accentColor
               : borderStyle === 'custom' ? borderCustom
