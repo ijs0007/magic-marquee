@@ -35,14 +35,14 @@ import { Transform, Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
-import { S3Client, GetObjectCommand, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import ffmpegStatic from "ffmpeg-static";
 import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.35";
+const APP_VERSION = "0.36";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -352,6 +352,18 @@ async function initDb() {
      ON CONFLICT (id) DO NOTHING`,
     [DEFAULT_TITLE_TEMPLATE, DEFAULT_DESCRIPTION_TEMPLATE]
   );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS yt_logos (
+      id BIGSERIAL PRIMARY KEY,
+      owner_id TEXT NOT NULL DEFAULT 'me',
+      name TEXT NOT NULL DEFAULT 'Logo',
+      data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      img_key TEXT,
+      img_type TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
   await refreshTemplateCache();
 }
 
@@ -1133,6 +1145,91 @@ app.post("/api/template", async (req, res) => {
     );
     await refreshTemplateCache();
     res.json({ ok: true, fields: used });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// --- Saved logos (Logo Studio): the design lives in Postgres (yt_logos); an
+// uploaded logo image lives in R2, referenced by key. The image is served back
+// through this same origin (a proxy), so drawing it on the canvas never taints
+// the export. Single-user for now. ---
+const LOGO_OWNER = "me"; // becomes a real owner id when Suite SSO lands
+function logoImgUrl(row) { return row && row.img_key ? ("/api/logos/" + row.id + "/image") : null; }
+
+app.get("/api/logos", async (req, res) => {
+  if (!dbConfigured) return res.json({ logos: [], persisted: false });
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, data, img_key FROM yt_logos WHERE owner_id = $1 ORDER BY updated_at DESC, id DESC LIMIT 60`,
+      [LOGO_OWNER]
+    );
+    const logos = rows.map((r) => ({ id: r.id, name: r.name, data: r.data || {}, imgKey: r.img_key || null, imgUrl: logoImgUrl(r) }));
+    res.json({ logos, persisted: true });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+app.post("/api/logos", async (req, res) => {
+  if (!dbConfigured) return res.status(500).json({ error: "Can't save — set DATABASE_URL in Render to turn on saving." });
+  const { name, logo, image, imgKey } = req.body || {};
+  const nm = (String(name || "Logo").trim().slice(0, 60)) || "Logo";
+  const data = (logo && typeof logo === "object") ? logo : {};
+  let key = (typeof imgKey === "string" && imgKey) ? imgKey : null;
+  let imgType = null;
+  try {
+    if (!key && typeof image === "string" && image.indexOf("data:") === 0) {
+      if (!r2Configured) return res.status(500).json({ error: "Image storage not configured (set R2_* env vars)." });
+      const comma = image.indexOf(",");
+      imgType = image.slice(5, image.indexOf(";")) || "image/png";
+      const buf = Buffer.from(image.slice(comma + 1), "base64");
+      if (buf.length > 4 * 1024 * 1024) return res.status(400).json({ error: "Logo image is too large (max 4MB)." });
+      key = `logos/${LOGO_OWNER}/${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+      await s3.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, Body: buf, ContentType: imgType }));
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO yt_logos (owner_id, name, data, img_key, img_type)
+       VALUES ($1, $2, $3::jsonb, $4, $5)
+       RETURNING id, name, data, img_key`,
+      [LOGO_OWNER, nm, JSON.stringify(data), key, imgType]
+    );
+    const r = rows[0];
+    res.json({ id: r.id, name: r.name, data: r.data || {}, imgKey: r.img_key || null, imgUrl: logoImgUrl(r) });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// Same-origin image proxy: stream the logo image out of R2 so the browser can
+// draw it on the canvas without tainting it (R2's own domain is cross-origin).
+app.get("/api/logos/:id/image", async (req, res) => {
+  if (!dbConfigured || !r2Configured) return res.status(404).end();
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).end();
+  try {
+    const { rows } = await pool.query(`SELECT img_key, img_type FROM yt_logos WHERE id = $1 AND owner_id = $2`, [id, LOGO_OWNER]);
+    const row = rows[0];
+    if (!row || !row.img_key) return res.status(404).end();
+    const obj = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: row.img_key }));
+    res.setHeader("Content-Type", row.img_type || "image/png");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    obj.Body.on("error", () => { try { res.destroy(); } catch (e) {} });
+    obj.Body.pipe(res);
+  } catch (err) {
+    if (!res.headersSent) res.status(500).end();
+  }
+});
+
+app.delete("/api/logos/:id", async (req, res) => {
+  if (!dbConfigured) return res.status(500).json({ error: "Database not configured." });
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Bad id." });
+  try {
+    const { rows } = await pool.query(`DELETE FROM yt_logos WHERE id = $1 AND owner_id = $2 RETURNING img_key`, [id, LOGO_OWNER]);
+    const key = rows[0] && rows[0].img_key;
+    if (key && r2Configured) { try { await s3.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key })); } catch (e) {} }
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err?.message || String(err) });
   }
