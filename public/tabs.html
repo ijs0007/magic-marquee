@@ -973,7 +973,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.15</div>
+    <div class="foot">Magic Marquee · v3.17</div>
   </div>
 
   <script>
@@ -3751,7 +3751,7 @@
     // ---- Custom-room saved looks (templates) ----
     var TPL_KEY = 'mp_customtpls', TPL_MAX = 8;
     let activeTplId = null;
-    var BRAND_LOOK = { id: 'brand', name: 'Brand', settings: { pos: 'bl', scale: 1, track: 0, font: 'Montserrat', italic: false, underline: false, strike: false, thin: false, hlGrad: { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, txGrad: { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, threeD: { on: false, depth: 8, angle: 45, color: '#000000' }, accent: '#0eaaf5', border: 'brand', borderCustom: '#f45911', badge: 'tl', textColor: '#ffffff', outline: { on: false, width: 8, color: '#000000' }, shadow: { on: true, color: '#000000', strength: 0.55 }, scrim: { on: true, strength: 1, color: '#000000' }, case: 'none', freeText: false } };
+    var BRAND_LOOK = { id: 'brand', name: 'Brand', settings: { pos: 'bl', scale: 1, track: 0, font: 'Montserrat', italic: false, underline: false, strike: false, thin: false, hlGrad: { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, txGrad: { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }, threeD: { on: false, depth: 8, angle: 45, color: '#000000' }, accent: '#0eaaf5', border: 'brand', borderCustom: '#f45911', badge: 'tl', textColor: '#ffffff', outline: { on: false, width: 8, color: '#000000' }, shadow: { on: true, color: '#000000', strength: 0.55 }, scrim: { on: true, strength: 1, color: '#000000' }, case: 'none', freeText: false, borderGrad: { on: false, c2: '#0eaaf5', angle: 90, dir: 'linear' }, borderNeon: { on: false, size: 22 }, borderGlitch: { on: false, off: 6 }, borderMats: 1, borderGap: 6, borderCornerLen: 90, borderRough: 6, borderMat: { on: false, w: 70, color: '#ffffff', shadow: true, tilt: 0 }, borderFilm: { on: false, barColor: '#0b0b0b', barPct: 9, holeColor: '#f4f4f2', holeScale: 1, gapScale: 1, shape: 'classic', sides: 'tb', text: '', nums: false }, borderMotion: { on: false, style: 'blur', amount: 30, angle: 0 }, borderW: 11, borderR: 28, borderInset: 12, borderLine: 'solid', borderGlow: { on: false, size: 18 }, logo: { shape: 'pill', plateColor: '#000000', plateAlpha: 0.5, avatarOn: true, avatarShape: 'circle', imgFit: 'fill', ringOn: true, ringColor: '#ffffff', ringW: 3, textOn: true, line1: 'ISAIAH', line2: 'JEREMIAH', font: 'Montserrat', textColor: '#ffffff' } } };
     function brandLook() { try { var o = JSON.parse(localStorage.getItem('mp_brand') || 'null'); if (o && typeof o === 'object') return { id: 'brand', name: 'Brand', settings: o }; } catch (e) {} return BRAND_LOOK; }
     function brandEdited() { try { return !!localStorage.getItem('mp_brand'); } catch (e) { return false; } }
     function updateBrand() { try { localStorage.setItem('mp_brand', JSON.stringify(captureCustom())); } catch (e) {} activeTplId = 'brand'; renderTpls(); }
@@ -3763,7 +3763,7 @@
       customCase = 'none';
       styleFx.custom = { on: false, strength: 1, color: '#000000' };
       accentColor = '#0eaaf5'; borderStyle = 'brand'; borderCustom = '#f45911';
-      badgeCorner = ''; textScale = 1; textTrack = 0; headlineFont = 'Montserrat'; txItalic = false; txUnderline = false; txStrike = false; txThin = false; hlGrad = { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; txGrad = { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; d3 = { on: false, depth: 8, angle: 45, color: '#000000' }; freeText = false; thumbPos = 'bl';
+      badgeCorner = ''; textScale = 1; textTrack = 0; headlineFont = 'Montserrat'; txItalic = false; txUnderline = false; txStrike = false; txThin = false; hlGrad = { on: false, c1: '#ffd60a', c2: '#ff453a', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; txGrad = { on: false, c1: '#ffffff', c2: '#0eaaf5', angle: 90, mid: 0.5, mode: 1, whole: false, seeded: false }; d3 = { on: false, depth: 8, angle: 45, color: '#000000' }; freeText = false; borderGrad = { on: false, c2: '#0eaaf5', angle: 90, dir: 'linear' }; borderNeon = { on: false, size: 22 }; borderGlitch = { on: false, off: 6 }; borderMats = 1; borderGap = 6; borderCornerLen = 90; borderRough = 6; borderMat = { on: false, w: 70, color: '#ffffff', shadow: true, tilt: 0 }; borderFilm = { on: false, barColor: '#0b0b0b', barPct: 9, holeColor: '#f4f4f2', holeScale: 1, gapScale: 1, shape: 'classic', sides: 'tb', text: '', nums: false, scroll: 0 }; borderMotion = { on: false, style: 'blur', amount: 30, angle: 0 }; borderW = 11; borderR = 28; borderInset = 12; borderLine = 'solid'; borderGlow = { on: false, size: 18 }; logo = { shape: 'pill', plateColor: '#000000', plateAlpha: 0.5, avatarOn: true, avatarShape: 'circle', imgFit: 'fill', ringOn: true, ringColor: '#ffffff', ringW: 3, textOn: true, line1: 'ISAIAH', line2: 'JEREMIAH', font: 'Montserrat', textColor: '#ffffff' }; thumbPos = 'bl';
       activeTplId = null;
       refreshCustomUI(); syncStyleFx(); drawThumb(); renderTpls();
     }
@@ -3787,10 +3787,83 @@
         shadow: { on: customShadow.on, color: customShadow.color, strength: customShadow.strength },
         scrim: { on: sc.on, strength: sc.strength, color: sc.color, angle: (sc.angle == null ? 0 : sc.angle), extent: (sc.extent == null ? 0.68 : sc.extent), falloff: (sc.falloff == null ? 0.5 : sc.falloff), pos: (sc.pos == null ? 0 : sc.pos) },
         case: customCase,
-        freeText: freeText
+        freeText: freeText,
+        borderGrad: { on: borderGrad.on, c2: borderGrad.c2, angle: borderGrad.angle, dir: borderGrad.dir },
+        borderNeon: { on: borderNeon.on, size: borderNeon.size },
+        borderGlitch: { on: borderGlitch.on, off: borderGlitch.off },
+        borderMats: borderMats, borderGap: borderGap, borderCornerLen: borderCornerLen, borderRough: borderRough,
+        borderMat: { on: borderMat.on, w: borderMat.w, color: borderMat.color, shadow: borderMat.shadow, tilt: borderMat.tilt },
+        borderFilm: { on: borderFilm.on, barColor: borderFilm.barColor, barPct: borderFilm.barPct, holeColor: borderFilm.holeColor, holeScale: borderFilm.holeScale, gapScale: borderFilm.gapScale, shape: borderFilm.shape, sides: borderFilm.sides, text: borderFilm.text, nums: borderFilm.nums },
+        borderMotion: { on: borderMotion.on, style: borderMotion.style, amount: borderMotion.amount, angle: borderMotion.angle },
+        borderW: borderW, borderR: borderR, borderInset: borderInset, borderLine: borderLine,
+        borderGlow: { on: borderGlow.on, size: borderGlow.size },
+        logo: { shape: logo.shape, plateColor: logo.plateColor, plateAlpha: logo.plateAlpha, avatarOn: logo.avatarOn, avatarShape: logo.avatarShape, imgFit: logo.imgFit, ringOn: logo.ringOn, ringColor: logo.ringColor, ringW: logo.ringW, textOn: logo.textOn, line1: logo.line1, line2: logo.line2, font: logo.font, textColor: logo.textColor }
       };
     }
     function setDV(id, txt) { var el = document.getElementById(id); if (el) { var dv = el.querySelector('.dv'); if (dv) dv.textContent = txt; } }
+    function refreshLogoUI() {
+      var L = logo;
+      var seg = function (id, attr, val) { var e = document.getElementById(id); if (e) Array.prototype.forEach.call(e.querySelectorAll('button'), function (b) { b.classList.toggle('sel', b.getAttribute(attr) === val); }); };
+      var chk = function (id, on) { var e = document.getElementById(id); if (e) e.checked = !!on; };
+      var pan = function (id, on) { var e = document.getElementById(id); if (e) e.style.display = on ? 'block' : 'none'; };
+      seg('logoShape', 'data-lshape', L.shape);
+      var pr = document.getElementById('logoPlateRow'); if (pr) buildSwatchPick(pr, function () { return logo.plateColor; }, function (c) { logo.plateColor = c; drawThumb(); });
+      setDV('dLogoPlateAlpha', Math.round(L.plateAlpha * 100) + '%');
+      chk('logoAvatarOn', L.avatarOn); pan('logoPhotoPanel', L.avatarOn);
+      seg('logoAvatarShape', 'data-ashape', L.avatarShape);
+      chk('logoRingOn', L.ringOn); pan('logoRingPanel', L.ringOn);
+      var rr = document.getElementById('logoRingRow'); if (rr) buildSwatchPick(rr, function () { return logo.ringColor; }, function (c) { logo.ringColor = c; drawThumb(); });
+      setDV('dLogoRingW', '' + Math.round(L.ringW));
+      chk('logoTextOn', L.textOn); pan('logoTextPanel', L.textOn);
+      var l1 = document.getElementById('logoLine1'); if (l1) l1.value = L.line1;
+      var l2 = document.getElementById('logoLine2'); if (l2) l2.value = L.line2;
+      var fsel = document.getElementById('logoFont'); if (fsel) fsel.value = L.font;
+      var tr = document.getElementById('logoTextRow'); if (tr) buildSwatchPick(tr, function () { return logo.textColor; }, function (c) { logo.textColor = c; drawThumb(); });
+      seg('logoImgFit', 'data-ifit', L.imgFit);
+    }
+    function refreshBorderFxUI() {
+      var seg = function (id, attr, val) { var e = document.getElementById(id); if (e) Array.prototype.forEach.call(e.querySelectorAll('button'), function (b) { b.classList.toggle('sel', b.getAttribute(attr) === val); }); };
+      var chk = function (id, on) { var e = document.getElementById(id); if (e) e.checked = !!on; };
+      var pan = function (id, on) { var e = document.getElementById(id); if (e) e.style.display = on ? 'block' : 'none'; };
+      var sw = function (id, get, set) { var e = document.getElementById(id); if (e) buildSwatchPick(e, get, set); };
+      setDV('dBorderW', '' + Math.round(borderW));
+      setDV('dBorderR', '' + Math.round(borderR));
+      setDV('dBorderInset', '' + Math.round(borderInset));
+      seg('borderLineToggle', 'data-bline', borderLine);
+      chk('borderGlowOn', borderGlow.on); pan('borderGlowPanel', borderGlow.on);
+      setDV('dBorderGlow', '' + Math.round(borderGlow.size));
+      chk('borderGradOn', borderGrad.on); pan('borderGradPanel', borderGrad.on);
+      sw('borderGradRow', function () { return borderGrad.c2; }, function (c) { borderGrad.c2 = c; drawThumb(); });
+      setDV('dBorderGradAngle', Math.round(borderGrad.angle) + '°');
+      seg('borderGradDir', 'data-gdir', borderGrad.dir);
+      chk('borderNeonOn', borderNeon.on); pan('borderNeonPanel', borderNeon.on);
+      setDV('dBorderNeon', '' + Math.round(borderNeon.size));
+      chk('borderGlitchOn', borderGlitch.on); pan('borderGlitchPanel', borderGlitch.on);
+      setDV('dBorderGlitch', '' + Math.round(borderGlitch.off));
+      setDV('dBorderMats', '' + Math.round(borderMats));
+      setDV('dBorderGap', '' + Math.round(borderGap));
+      setDV('dBorderCornerLen', '' + Math.round(borderCornerLen));
+      setDV('dBorderRough', '' + Math.round(borderRough));
+      chk('borderMatOn', borderMat.on); pan('borderMatPanel', borderMat.on);
+      sw('borderMatRow', function () { return borderMat.color; }, function (c) { borderMat.color = c; drawThumb(); });
+      setDV('dBorderMatW', '' + Math.round(borderMat.w));
+      setDV('dBorderMatTilt', Math.round(borderMat.tilt) + '°');
+      chk('borderMatShadow', borderMat.shadow);
+      chk('borderFilmOn', borderFilm.on); pan('borderFilmPanel', borderFilm.on);
+      sw('borderFilmBarRow', function () { return borderFilm.barColor; }, function (c) { borderFilm.barColor = c; drawThumb(); });
+      sw('borderFilmHoleRow', function () { return borderFilm.holeColor; }, function (c) { borderFilm.holeColor = c; drawThumb(); });
+      setDV('dFilmBar', '' + Math.round(borderFilm.barPct));
+      setDV('dFilmHole', '' + Math.round(borderFilm.holeScale * 100));
+      setDV('dFilmGap', '' + Math.round(borderFilm.gapScale * 100));
+      seg('borderFilmShape', 'data-fshape', borderFilm.shape);
+      seg('borderFilmSides', 'data-fsides', borderFilm.sides);
+      var ft = document.getElementById('borderFilmText'); if (ft) ft.value = borderFilm.text;
+      chk('borderFilmNums', borderFilm.nums);
+      chk('borderMotionOn', borderMotion.on); pan('borderMotionPanel', borderMotion.on);
+      seg('borderMotionStyle', 'data-mstyle', borderMotion.style);
+      setDV('dMotionAmt', '' + Math.round(borderMotion.amount));
+      setDV('dMotionAngle', Math.round(borderMotion.angle) + '°');
+    }
     function refreshCustomUI() {
       var o = document.getElementById('fxOutlineOn'); if (o) o.checked = !!customOutline.on;
       var ts = document.getElementById('fxShadowTextOn'); if (ts) ts.checked = !!customShadow.on;
@@ -3836,6 +3909,7 @@
       buildPosGrid(); syncLogoGrid();
       if (typeof syncPosDials === 'function') syncPosDials();
       if (typeof renderChips === 'function') renderChips();
+      refreshLogoUI(); refreshBorderFxUI();
       syncStyleFx();
     }
     function setCustomState(s) {
@@ -3858,6 +3932,22 @@
       if (s.scrim) styleFx.custom = { on: !!s.scrim.on, strength: (s.scrim.strength != null ? s.scrim.strength : 1), color: s.scrim.color || '#000000', angle: (s.scrim.angle == null ? 0 : s.scrim.angle), extent: (s.scrim.extent == null ? 0.68 : s.scrim.extent), falloff: (s.scrim.falloff == null ? 0.5 : s.scrim.falloff), pos: (s.scrim.pos == null ? 0 : s.scrim.pos) };
       if (typeof s.freeText === 'boolean') freeText = s.freeText;
       customCase = s.case || 'none';
+      borderGrad = s.borderGrad ? { on: !!s.borderGrad.on, c2: s.borderGrad.c2 || '#0eaaf5', angle: (s.borderGrad.angle != null ? s.borderGrad.angle : 90), dir: s.borderGrad.dir || 'linear' } : { on: false, c2: '#0eaaf5', angle: 90, dir: 'linear' };
+      borderNeon = s.borderNeon ? { on: !!s.borderNeon.on, size: (s.borderNeon.size != null ? s.borderNeon.size : 22) } : { on: false, size: 22 };
+      borderGlitch = s.borderGlitch ? { on: !!s.borderGlitch.on, off: (s.borderGlitch.off != null ? s.borderGlitch.off : 6) } : { on: false, off: 6 };
+      borderMats = (s.borderMats != null) ? s.borderMats : 1;
+      borderGap = (s.borderGap != null) ? s.borderGap : 6;
+      borderCornerLen = (s.borderCornerLen != null) ? s.borderCornerLen : 90;
+      borderRough = (s.borderRough != null) ? s.borderRough : 6;
+      borderMat = s.borderMat ? { on: !!s.borderMat.on, w: (s.borderMat.w != null ? s.borderMat.w : 70), color: s.borderMat.color || '#ffffff', shadow: (s.borderMat.shadow != null ? !!s.borderMat.shadow : true), tilt: (s.borderMat.tilt != null ? s.borderMat.tilt : 0) } : { on: false, w: 70, color: '#ffffff', shadow: true, tilt: 0 };
+      borderFilm = s.borderFilm ? { on: !!s.borderFilm.on, barColor: s.borderFilm.barColor || '#0b0b0b', barPct: (s.borderFilm.barPct != null ? s.borderFilm.barPct : 9), holeColor: s.borderFilm.holeColor || '#f4f4f2', holeScale: (s.borderFilm.holeScale != null ? s.borderFilm.holeScale : 1), gapScale: (s.borderFilm.gapScale != null ? s.borderFilm.gapScale : 1), shape: s.borderFilm.shape || 'classic', sides: s.borderFilm.sides || 'tb', text: (s.borderFilm.text != null ? s.borderFilm.text : ''), nums: !!s.borderFilm.nums, scroll: 0 } : { on: false, barColor: '#0b0b0b', barPct: 9, holeColor: '#f4f4f2', holeScale: 1, gapScale: 1, shape: 'classic', sides: 'tb', text: '', nums: false, scroll: 0 };
+      borderMotion = s.borderMotion ? { on: !!s.borderMotion.on, style: s.borderMotion.style || 'blur', amount: (s.borderMotion.amount != null ? s.borderMotion.amount : 30), angle: (s.borderMotion.angle != null ? s.borderMotion.angle : 0) } : { on: false, style: 'blur', amount: 30, angle: 0 };
+      borderW = (s.borderW != null) ? s.borderW : 11;
+      borderR = (s.borderR != null) ? s.borderR : 28;
+      borderInset = (s.borderInset != null) ? s.borderInset : 12;
+      borderLine = s.borderLine || 'solid';
+      borderGlow = s.borderGlow ? { on: !!s.borderGlow.on, size: (s.borderGlow.size != null ? s.borderGlow.size : 18) } : { on: false, size: 18 };
+      logo = s.logo ? { shape: s.logo.shape || 'pill', plateColor: s.logo.plateColor || '#000000', plateAlpha: (s.logo.plateAlpha != null ? s.logo.plateAlpha : 0.5), avatarOn: (s.logo.avatarOn != null ? !!s.logo.avatarOn : true), avatarShape: s.logo.avatarShape || 'circle', imgFit: s.logo.imgFit || 'fill', ringOn: (s.logo.ringOn != null ? !!s.logo.ringOn : true), ringColor: s.logo.ringColor || '#ffffff', ringW: (s.logo.ringW != null ? s.logo.ringW : 3), textOn: (s.logo.textOn != null ? !!s.logo.textOn : true), line1: (s.logo.line1 != null ? s.logo.line1 : 'ISAIAH'), line2: (s.logo.line2 != null ? s.logo.line2 : 'JEREMIAH'), font: s.logo.font || 'Montserrat', textColor: s.logo.textColor || '#ffffff' } : { shape: 'pill', plateColor: '#000000', plateAlpha: 0.5, avatarOn: true, avatarShape: 'circle', imgFit: 'fill', ringOn: true, ringColor: '#ffffff', ringW: 3, textOn: true, line1: 'ISAIAH', line2: 'JEREMIAH', font: 'Montserrat', textColor: '#ffffff' };
     }
     function applyCustom(s, id) {
       if (!s) return;
@@ -3873,7 +3963,7 @@
     // All synchronous, so the screen only repaints once (no flicker on the main canvas).
     function renderLookPreview(s, mini) {
       if (!mini) return;
-      var snap = { st: thumbStyle, pos: thumbPos, sc: textScale, tr: textTrack, fn: headlineFont, it: txItalic, un: txUnderline, sk: txStrike, tn: txThin, hg: { on: hlGrad.on, c1: hlGrad.c1, c2: hlGrad.c2, angle: hlGrad.angle, mid: hlGrad.mid, mode: hlGrad.mode, whole: hlGrad.whole, seeded: hlGrad.seeded }, tg: { on: txGrad.on, c1: txGrad.c1, c2: txGrad.c2, angle: txGrad.angle, mid: txGrad.mid, mode: txGrad.mode, whole: txGrad.whole, seeded: txGrad.seeded }, td: { on: d3.on, depth: d3.depth, angle: d3.angle, color: d3.color }, ac: accentColor, bd: borderStyle, bc: borderCustom, bg: badgeCorner, tc: customTextColor, ol: customOutline, sh: customShadow, cs: customCase, scr: styleFx.custom, ft: freeText };
+      var snap = { st: thumbStyle, pos: thumbPos, sc: textScale, tr: textTrack, fn: headlineFont, it: txItalic, un: txUnderline, sk: txStrike, tn: txThin, hg: { on: hlGrad.on, c1: hlGrad.c1, c2: hlGrad.c2, angle: hlGrad.angle, mid: hlGrad.mid, mode: hlGrad.mode, whole: hlGrad.whole, seeded: hlGrad.seeded }, tg: { on: txGrad.on, c1: txGrad.c1, c2: txGrad.c2, angle: txGrad.angle, mid: txGrad.mid, mode: txGrad.mode, whole: txGrad.whole, seeded: txGrad.seeded }, td: { on: d3.on, depth: d3.depth, angle: d3.angle, color: d3.color }, ac: accentColor, bd: borderStyle, bc: borderCustom, bg: badgeCorner, tc: customTextColor, ol: customOutline, sh: customShadow, cs: customCase, scr: styleFx.custom, ft: freeText, bGrad: borderGrad, bNeon: borderNeon, bGlitch: borderGlitch, bMats: borderMats, bGap: borderGap, bCorner: borderCornerLen, bRough: borderRough, bMat: borderMat, bFilm: borderFilm, bMotion: borderMotion, bW: borderW, bR: borderR, bInset: borderInset, bLine: borderLine, bGlow: borderGlow, lg: logo };
       try {
         setCustomState(s); thumbStyle = 'custom';
         drawThumb();
@@ -3881,7 +3971,7 @@
         mc.clearRect(0, 0, mini.width, mini.height);
         if (cnv) mc.drawImage(cnv, 0, 0, 1280, 720, 0, 0, mini.width, mini.height);
       } catch (e) {}
-      thumbStyle = snap.st; thumbPos = snap.pos; textScale = snap.sc; textTrack = (snap.tr != null ? snap.tr : textTrack); headlineFont = (snap.fn != null ? snap.fn : headlineFont); txItalic = !!snap.it; txUnderline = !!snap.un; txStrike = !!snap.sk; txThin = !!snap.tn; hlGrad = (snap.hg || hlGrad); txGrad = (snap.tg || txGrad); d3 = (snap.td != null ? snap.td : d3); accentColor = snap.ac; borderStyle = snap.bd; borderCustom = snap.bc; badgeCorner = snap.bg; customTextColor = snap.tc; customOutline = snap.ol; customShadow = snap.sh; customCase = snap.cs; styleFx.custom = snap.scr; freeText = snap.ft;
+      thumbStyle = snap.st; thumbPos = snap.pos; textScale = snap.sc; textTrack = (snap.tr != null ? snap.tr : textTrack); headlineFont = (snap.fn != null ? snap.fn : headlineFont); txItalic = !!snap.it; txUnderline = !!snap.un; txStrike = !!snap.sk; txThin = !!snap.tn; hlGrad = (snap.hg || hlGrad); txGrad = (snap.tg || txGrad); d3 = (snap.td != null ? snap.td : d3); accentColor = snap.ac; borderStyle = snap.bd; borderCustom = snap.bc; badgeCorner = snap.bg; customTextColor = snap.tc; customOutline = snap.ol; customShadow = snap.sh; customCase = snap.cs; styleFx.custom = snap.scr; freeText = snap.ft; borderGrad = snap.bGrad; borderNeon = snap.bNeon; borderGlitch = snap.bGlitch; borderMats = snap.bMats; borderGap = snap.bGap; borderCornerLen = snap.bCorner; borderRough = snap.bRough; borderMat = snap.bMat; borderFilm = snap.bFilm; borderMotion = snap.bMotion; borderW = snap.bW; borderR = snap.bR; borderInset = snap.bInset; borderLine = snap.bLine; borderGlow = snap.bGlow; logo = snap.lg;
     }
     function renderTpls() {
       var list = document.getElementById('tplList'); if (!list) return;
