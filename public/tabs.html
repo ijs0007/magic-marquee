@@ -696,6 +696,7 @@
       <div id="borderCustomPanel" style="display:none; margin-top:12px">
         <span class="tt-label" style="display:block;margin-bottom:8px">Border color</span>
         <div id="borderCustomRow" class="swatchpick"></div>
+        <button type="button" id="borderMatchBtn" class="secondary" style="margin-top:10px">Match to photo</button>
         <div class="texttools" style="margin-top:12px">
           <div class="tt-block"><span class="tt-label">Width</span><div class="dial" id="dBorderW" style="min-width:68px"><span class="dk">Width</span><span class="dv">11</span></div></div>
           <div class="tt-block"><span class="tt-label">Corner</span><div class="dial" id="dBorderR" style="min-width:68px"><span class="dk">Radius</span><span class="dv">28</span></div></div>
@@ -844,7 +845,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.3</div>
+    <div class="foot">Magic Marquee · v3.4</div>
   </div>
 
   <script>
@@ -2124,6 +2125,43 @@
         roundRectPath(ctx, x, y, w, h, r); ctx.stroke();
       }
       ctx.restore();
+    }
+
+    function rgbToHsv(r, g, b) { r/=255; g/=255; b/=255; var mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn, h=0; if (d) { if (mx===r) h=((g-b)/d)%6; else if (mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; if (h<0) h+=1; } return [h, mx===0?0:d/mx, mx]; }
+
+    function rgbToHex(r, g, b) { var to=function(v){ v=Math.max(0,Math.min(255,Math.round(v))).toString(16); return v.length<2?('0'+v):v; }; return '#'+to(r)+to(g)+to(b); }
+
+    // Sample the graded photo's dominant colors and set the custom border color (+ the
+    // gradient's "fades to" color). Saturation-weighted clustering so we pick a punchy
+    // dominant color, not a muddy pixel average. No-op if there's no photo yet.
+    function matchBorderToPhoto() {
+      if (!thumbFrameImg || !thumbFrameImg.complete || !thumbFrameImg.naturalWidth) return false;
+      if (!gradeReady) rebuildGrade(true);
+      var sw = 48, sh = 27;
+      var sc = document.createElement('canvas'); sc.width = sw; sc.height = sh;
+      var sctx = sc.getContext('2d');
+      sctx.drawImage(gradeCanvas, 0, 0, 1280, 720, 0, 0, sw, sh);
+      var data; try { data = sctx.getImageData(0, 0, sw, sh).data; } catch (e) { return false; }
+      var buckets = {}, k, bk;
+      for (var i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 128) continue;
+        var hsv = rgbToHsv(data[i], data[i + 1], data[i + 2]);
+        if (hsv[2] < 0.12) continue;
+        if (hsv[1] < 0.12 && hsv[2] > 0.92) continue;
+        var key = (Math.round(hsv[0] * 12) % 12) + '_' + (hsv[1] < 0.25 ? 0 : 1) + '_' + Math.round(hsv[2] * 3);
+        var w = 0.4 + hsv[1] * 1.6;
+        bk = buckets[key] || (buckets[key] = { key: key, w: 0, r: 0, g: 0, b: 0 });
+        bk.w += w; bk.r += data[i] * w; bk.g += data[i + 1] * w; bk.b += data[i + 2] * w;
+      }
+      var arr = [];
+      for (k in buckets) { bk = buckets[k]; arr.push({ key: k, w: bk.w, r: bk.r / bk.w, g: bk.g / bk.w, b: bk.b / bk.w }); }
+      if (!arr.length) return false;
+      arr.sort(function (a, b) { return b.w - a.w; });
+      var c1 = arr[0], c2 = null, h1 = c1.key.split('_')[0];
+      for (var j = 1; j < arr.length; j++) { if (arr[j].key.split('_')[0] !== h1) { c2 = arr[j]; break; } }
+      borderCustom = rgbToHex(c1.r, c1.g, c1.b);
+      borderGrad.c2 = c2 ? rgbToHex(c2.r, c2.g, c2.b) : borderCustom;
+      return true;
     }
 
     function drawBorder(ctx, W, H, thin) {
@@ -3677,6 +3715,13 @@
       if (gradOn) gradOn.addEventListener('change', function () { borderGrad.on = gradOn.checked; if (gradPanel) gradPanel.style.display = gradOn.checked ? 'block' : 'none'; drawThumb(); });
       var glowOn = document.getElementById('borderGlowOn'), glowPanel = document.getElementById('borderGlowPanel');
       if (glowOn) glowOn.addEventListener('change', function () { borderGlow.on = glowOn.checked; if (glowPanel) glowPanel.style.display = glowOn.checked ? 'block' : 'none'; drawThumb(); });
+      var matchBtn = document.getElementById('borderMatchBtn');
+      if (matchBtn) matchBtn.addEventListener('click', function () {
+        if (!matchBorderToPhoto()) return;
+        if (customRow) buildSwatchPick(customRow, function () { return borderCustom; }, function (col) { borderCustom = col; drawThumb(); });
+        if (gradRow) buildSwatchPick(gradRow, function () { return borderGrad.c2; }, function (col) { borderGrad.c2 = col; drawThumb(); });
+        drawThumb();
+      });
     })();
 
     setThumbBtn.addEventListener('click', function () {
