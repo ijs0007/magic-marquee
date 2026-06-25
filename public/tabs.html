@@ -300,17 +300,19 @@
     .canvaswrap { z-index:6; background:var(--bg); padding:6px 0 0; }
     .canvaswrap.pinned { position:sticky; top:0; }
     .canvasframe { position:relative; }
-    .pinbtn { width:auto; display:inline-flex; align-items:center; justify-content:center; padding:5px 11px; border-radius:999px; background:var(--chip); border:1px solid rgba(255,255,255,.14); color:var(--text-soft); cursor:pointer; }
-    .pinbtn svg { width:15px; height:15px; display:block; }
-    .pinbtn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .secnamerow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:9px 2px 2px; }
+    .sntools { display:flex; align-items:center; gap:6px; }
+    .sntool { width:28px; height:28px; min-width:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:7px; background:var(--chip); border:1px solid var(--border); color:var(--text-soft); cursor:pointer; font-size:14px; line-height:1; }
+    .sntool svg { width:14px; height:14px; }
+    .sntool.on { background:var(--accent); border-color:var(--accent); color:#fff; }
     .sectabs { position:sticky; top:0; z-index:5; background:linear-gradient(to bottom, var(--bg), var(--bg) calc(100% - 12px), transparent); padding:8px 0 12px; }
     .sectabbar { display:flex; gap:2px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:3px; }
     .sectabbar button { flex:1; width:auto; display:flex; align-items:center; justify-content:center; padding:9px 2px; background:transparent; border:0; border-radius:7px; color:var(--text-soft); cursor:pointer; }
     .sectabbar button svg { width:20px; height:20px; display:block; }
     .sectabbar button.sel { background:var(--accent); color:#fff; }
-    .secname { font-size:13px; font-weight:700; color:var(--text); margin:9px 2px 2px; }
+    .secname { font-size:13px; font-weight:700; color:var(--text); }
     @keyframes segpop { 0% { transform:scale(.8); opacity:0; } 100% { transform:scale(1); opacity:1; } }
-    #popoutBtn { display:none; width:auto; align-items:center; gap:5px; padding:5px 13px; font-size:12px; font-weight:700; letter-spacing:.02em; background:var(--chip); color:var(--text-soft); border:1px solid rgba(255,255,255,.14); border-radius:999px; cursor:pointer; }
+    #popoutBtn { display:none; }
     @media (min-width:980px) { #popoutBtn { display:inline-flex; } }
     #popoutPanel { position:fixed; z-index:80; display:none; flex-direction:column; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 18px 50px rgba(0,0,0,.55); overflow:hidden; resize:horizontal; width:620px; min-width:300px; max-width:min(1100px,95vw); }
     #popoutPanel.open { display:flex; }
@@ -473,12 +475,11 @@
       <div id="thumbCard" class="card" style="display:none">
       <div class="canvaswrap" id="canvasWrap">
         <div class="canvasframe"><canvas id="thumbCanvas" width="1280" height="720"></canvas></div>
-        <div style="display:flex;align-items:center;gap:8px;padding:7px 2px 0"><button type="button" id="popoutBtn">&#8599; Pop out</button><div style="display:flex;align-items:center;gap:8px;margin-left:auto"><button type="button" id="compareBtn" style="display:none;width:auto;align-items:center;gap:5px;padding:5px 13px;font-size:12px;font-weight:700;letter-spacing:.02em;background:var(--chip);color:var(--text-soft);border:1px solid rgba(255,255,255,.14);border-radius:999px">&#8646; Edited</button><button type="button" id="canvasPinBtn" class="pinbtn on" aria-label="Unpin preview" title="Pin or unpin the preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button></div></div>
         <p class="genstatus" id="thumbStatus"></p>
       </div>
       <div class="sectabs" id="secTabs">
         <div class="sectabbar" id="secTabBar"><button type="button" data-sec="photo" title="Photo" aria-label="Photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button><button type="button" data-sec="headline" title="Headline" aria-label="Headline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></button><button type="button" data-sec="effects" title="Effects" aria-label="Effects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"/></svg></button><button type="button" data-sec="border" title="Border" aria-label="Border"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7.5" y="7.5" width="9" height="9" rx="1"/></svg></button><button type="button" data-sec="badge" title="Badge" aria-label="Badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></button><button type="button" data-sec="looks" title="Looks" aria-label="Looks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button><button type="button" data-sec="share" title="Share" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button></div>
-        <div class="secname" id="secName">Photo</div>
+        <div class="secnamerow"><div class="secname" id="secName">Photo</div><div class="sntools"><button type="button" id="popoutBtn" class="sntool" title="Pop out preview" aria-label="Pop out preview">&#8599;</button><button type="button" id="compareBtn" class="sntool" style="display:none" title="Compare with original" aria-label="Compare with original">&#8646;</button><button type="button" id="canvasPinBtn" class="sntool on" aria-label="Unpin preview" title="Pin or unpin the preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button></div></div>
       </div>
 
       <div class="accg" data-acc="photo">
@@ -567,7 +568,7 @@
       <div class="lblrow"><label for="overlayText" style="margin:0">Headline (on-screen text) — one line per row</label><span style="display:flex;gap:8px"><button id="toggleTextBtn" class="ghostbtn" type="button" title="Hide text" aria-label="Hide text"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="vertical-align:-2px"><path d="M1 8s2.6-4.6 7-4.6S15 8 15 8s-2.6 4.6-7 4.6S1 8 1 8z"/><circle cx="8" cy="8" r="2"/><line class="eyeslash" x1="2" y1="2" x2="14" y2="14"/></svg></button><button id="newTextBtn" class="ghostbtn" type="button">↻ New</button></span></div>
       <textarea id="overlayText" style="min-height:84px" placeholder="The punchy text on the thumbnail"></textarea>
 
-      <label>Tap words to select · hold &amp; drag to resize</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px"><label style="margin:0">Tap words to select · hold &amp; drag to resize</label><label style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;margin:0;cursor:pointer;white-space:nowrap"><input type="checkbox" id="fitToggle" checked>Fit row to width</label></div>
       <div id="wordChips" class="chips"></div>
       <div class="selrow"><span id="selInfo" class="selinfo" style="margin-right:auto"></span><button type="button" id="selAll" class="txbtn ghost selbtn">Select all</button><button type="button" id="selClear" class="txbtn ghost selbtn">Clear</button></div>
 
@@ -592,7 +593,6 @@
           <p class="hint" style="margin:8px 0 0">Pick the two colors from the swatches above &mdash; <b style="color:#ff453a">red ring</b> = color 1, <b style="color:#0a84ff">blue ring</b> = color 2.</p>
         </div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin:8px 0 12px;cursor:pointer"><input type="checkbox" id="fitToggle" checked>Fit each row to width</label>
       <div class="texttools">
         <div class="tt-block">
           <span class="tt-label">Position</span>
@@ -818,7 +818,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.0</div>
+    <div class="foot">Magic Marquee · v3.1</div>
   </div>
 
   <script>
@@ -2439,10 +2439,8 @@
       if (!b) return;
       if (!originalImg) { b.style.display = 'none'; showOriginal = false; return; }
       b.style.display = 'inline-flex';
-      b.textContent = showOriginal ? '\u21c6 Original' : '\u21c6 Edited';
-      b.style.background = showOriginal ? 'var(--accent)' : 'var(--chip)';
-      b.style.color = showOriginal ? '#fff' : 'var(--text-soft)';
-      b.style.borderColor = showOriginal ? 'var(--accent)' : 'rgba(255,255,255,.14)';
+      b.textContent = '\u21c6';
+      b.classList.toggle('on', showOriginal);
     }
     function applyFrame(src, selEl, keepOriginal) {
       var img = new Image();
@@ -2837,7 +2835,7 @@
         fL = Math.max(12, Math.min(window.innerWidth - fW - 20, Math.round(window.innerWidth * 0.42)));
         fT = 80;
         setMode('float');
-        btn.innerHTML = '&#8600; Put back';
+        btn.innerHTML = '&#8600;'; btn.classList.add('on');
         popped = true;
       }
       function putBack() {
@@ -2845,7 +2843,7 @@
         clearPad();
         if (homeParent && canvas) homeParent.appendChild(canvas);
         panel.classList.remove('open', 'dockL', 'dockR');
-        btn.innerHTML = '&#8599; Pop out';
+        btn.innerHTML = '&#8599;'; btn.classList.remove('on');
         popped = false;
       }
       btn.addEventListener('click', function () { if (popped) putBack(); else popOut(); });
