@@ -702,15 +702,32 @@
           <div class="tt-block"><span class="tt-label">Corner</span><div class="dial" id="dBorderR" style="min-width:68px"><span class="dk">Radius</span><span class="dv">28</span></div></div>
           <div class="tt-block"><span class="tt-label">Inset</span><div class="dial" id="dBorderInset" style="min-width:68px"><span class="dk">Inset</span><span class="dv">12</span></div></div>
         </div>
-        <span class="tt-label" style="display:block;margin:14px 0 8px">Line style</span>
+        <div class="texttools" style="margin-top:10px">
+          <div class="tt-block"><span class="tt-label">Mats</span><div class="dial" id="dBorderMats" style="min-width:64px"><span class="dk">Mats</span><span class="dv">1</span></div></div>
+          <div class="tt-block"><span class="tt-label">Gap</span><div class="dial" id="dBorderGap" style="min-width:64px"><span class="dk">Gap</span><span class="dv">6</span></div></div>
+        </div>
+        <span class="tt-label" style="display:block;margin:14px 0 8px">Style</span>
         <div id="borderLineToggle" class="segmented">
           <button type="button" data-bline="solid" class="sel">Solid</button>
           <button type="button" data-bline="double">Double</button>
           <button type="button" data-bline="dashed">Dashed</button>
           <button type="button" data-bline="dotted">Dotted</button>
+          <button type="button" data-bline="corners">Corners</button>
+          <button type="button" data-bline="rough">Rough</button>
+        </div>
+        <div id="borderCornerPanel" style="display:none">
+          <div class="texttools" style="margin-top:10px"><div class="tt-block"><span class="tt-label">Length</span><div class="dial" id="dBorderCornerLen" style="min-width:72px"><span class="dk">Len</span><span class="dv">90</span></div></div></div>
+        </div>
+        <div id="borderRoughPanel" style="display:none">
+          <div class="texttools" style="margin-top:10px"><div class="tt-block"><span class="tt-label">Roughness</span><div class="dial" id="dBorderRough" style="min-width:80px"><span class="dk">Rough</span><span class="dv">6</span></div></div></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="borderGradOn">Gradient</label>
         <div id="borderGradPanel" style="display:none">
+          <span class="tt-label" style="display:block;margin:0 0 8px">Direction</span>
+          <div id="borderGradDir" class="segmented">
+            <button type="button" data-gdir="linear" class="sel">Linear</button>
+            <button type="button" data-gdir="around">Around</button>
+          </div>
           <span class="tt-label" style="display:block;margin-bottom:8px">Fades to</span>
           <div id="borderGradRow" class="swatchpick"></div>
           <div class="texttools" style="margin-top:10px"><div class="tt-block"><span class="tt-label">Angle</span><div class="dial" id="dBorderGradAngle" style="min-width:78px"><span class="dk">Angle</span><span class="dv">90&deg;</span></div></div></div>
@@ -718,6 +735,24 @@
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="borderGlowOn">Glow</label>
         <div id="borderGlowPanel" style="display:none">
           <div class="texttools"><div class="tt-block"><span class="tt-label">Size</span><div class="dial" id="dBorderGlow" style="min-width:80px"><span class="dk">Glow</span><span class="dv">18</span></div></div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="borderNeonOn">Neon</label>
+        <div id="borderNeonPanel" style="display:none">
+          <div class="texttools"><div class="tt-block"><span class="tt-label">Glow</span><div class="dial" id="dBorderNeon" style="min-width:80px"><span class="dk">Glow</span><span class="dv">22</span></div></div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="borderGlitchOn">Glitch</label>
+        <div id="borderGlitchPanel" style="display:none">
+          <div class="texttools"><div class="tt-block"><span class="tt-label">Offset</span><div class="dial" id="dBorderGlitch" style="min-width:80px"><span class="dk">Offset</span><span class="dv">6</span></div></div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="borderMatOn">Matted frame</label>
+        <div id="borderMatPanel" style="display:none">
+          <span class="tt-label" style="display:block;margin:0 0 8px">Mat color</span>
+          <div id="borderMatRow" class="swatchpick"></div>
+          <div class="texttools" style="margin-top:10px">
+            <div class="tt-block"><span class="tt-label">Width</span><div class="dial" id="dBorderMatW" style="min-width:68px"><span class="dk">Mat</span><span class="dv">70</span></div></div>
+            <div class="tt-block"><span class="tt-label">Tilt</span><div class="dial" id="dBorderMatTilt" style="min-width:68px"><span class="dk">Tilt</span><span class="dv">0°</span></div></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:12px 0 4px;cursor:pointer"><input type="checkbox" id="borderMatShadow" checked>Drop shadow</label>
         </div>
       </div>
         </div>
@@ -845,7 +880,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.4</div>
+    <div class="foot">Magic Marquee · v3.9</div>
   </div>
 
   <script>
@@ -915,7 +950,12 @@
     let borderCustom = '#ffffff'; // custom border color
     let borderW = 11, borderR = 28, borderInset = 12;        // custom border geometry
     let borderLine = 'solid';                                // solid | double | dashed | dotted
-    let borderGrad = { on: false, c2: '#0eaaf5', angle: 90 };// gradient: borderCustom -> c2
+    let borderGrad = { on: false, c2: '#0eaaf5', angle: 90, dir: 'linear' };// gradient: borderCustom -> c2
+    let borderNeon = { on: false, size: 22 };
+    let borderGlitch = { on: false, off: 6 };
+    let borderMats = 1, borderGap = 6;
+    let borderCornerLen = 90, borderRough = 6;
+    let borderMat = { on: false, w: 70, color: '#ffffff', shadow: true, tilt: 0 };
     let borderGlow = { on: false, size: 18 };                // outer glow in the border color
     var styleFx = {
       cinematic: { on: true, strength: 1, color: '#000000' },
@@ -1638,6 +1678,28 @@
       montserratReady = true; return Promise.resolve();
     }
 
+    function cornerBracketPath(ctx, x, y, w, h, len) {
+      var L = Math.min(len, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x, y + L); ctx.lineTo(x, y); ctx.lineTo(x + L, y);
+      ctx.moveTo(x + w - L, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + L);
+      ctx.moveTo(x + w, y + h - L); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - L, y + h);
+      ctx.moveTo(x + L, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - L);
+    }
+
+    function roughRectPath(ctx, x, y, w, h, amp) {
+      function jit(i) { var v = Math.sin(i * 12.9898) * 43758.5453; return (v - Math.floor(v)) * 2 - 1; }
+      var step = 26, pts = [], idx = 0, px, py;
+      for (px = x; px < x + w; px += step) { pts.push([px + jit(idx) * amp, y + jit(idx + 100) * amp]); idx++; }
+      for (py = y; py < y + h; py += step) { pts.push([x + w + jit(idx) * amp, py + jit(idx + 100) * amp]); idx++; }
+      for (px = x + w; px > x; px -= step) { pts.push([px + jit(idx) * amp, y + h + jit(idx + 100) * amp]); idx++; }
+      for (py = y + h; py > y; py -= step) { pts.push([x + jit(idx) * amp, py + jit(idx + 100) * amp]); idx++; }
+      if (!pts.length) { roundRectPath(ctx, x, y, w, h, 0); return; }
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      ctx.closePath();
+    }
+
     function roundRectPath(ctx, x, y, w, h, r) {
       r = Math.min(r, w / 2, h / 2);
       ctx.beginPath();
@@ -2106,16 +2168,39 @@
       ctx.save();
       var stroke = borderCustom;
       if (borderGrad.on) {
-        var a = borderGrad.angle * Math.PI / 180, cx = W / 2, cy = H / 2, L = Math.max(W, H) / 2;
-        var g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L);
-        g.addColorStop(0, borderCustom); g.addColorStop(1, borderGrad.c2); stroke = g;
+        var cx = W / 2, cy = H / 2, g;
+        if (borderGrad.dir === 'around' && ctx.createConicGradient) {
+          g = ctx.createConicGradient(borderGrad.angle * Math.PI / 180, cx, cy);
+          g.addColorStop(0, borderCustom); g.addColorStop(0.5, borderGrad.c2); g.addColorStop(1, borderCustom);
+        } else {
+          var a = borderGrad.angle * Math.PI / 180, L = Math.max(W, H) / 2;
+          g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L);
+          g.addColorStop(0, borderCustom); g.addColorStop(1, borderGrad.c2);
+        }
+        stroke = g;
       }
       ctx.strokeStyle = stroke; ctx.lineWidth = bw; ctx.lineJoin = 'round';
       if (borderGlow.on) { ctx.shadowColor = borderCustom; ctx.shadowBlur = borderGlow.size; }
       if (borderLine === 'dashed') { ctx.lineCap = 'butt'; ctx.setLineDash([bw * 2.4, bw * 1.7]); }
       else if (borderLine === 'dotted') { ctx.lineCap = 'round'; ctx.setLineDash([0.01, bw * 2]); }
       else { ctx.lineCap = 'butt'; ctx.setLineDash([]); }
-      if (borderLine === 'double') {
+      function styledPath() {
+        if (borderLine === 'corners') cornerBracketPath(ctx, x, y, w, h, borderCornerLen);
+        else if (borderLine === 'rough') roughRectPath(ctx, x, y, w, h, borderRough);
+        else roundRectPath(ctx, x, y, w, h, r);
+      }
+      if (borderLine === 'corners' || borderLine === 'rough') {
+        styledPath(); ctx.stroke();
+      } else if (borderMats > 1) {
+        ctx.setLineDash([]); ctx.lineWidth = bw; ctx.lineJoin = 'round';
+        for (var mi = 0; mi < borderMats; mi++) {
+          var moff = mi * (bw + borderGap);
+          var mw2 = w - 2 * moff, mh2 = h - 2 * moff;
+          if (mw2 <= 0 || mh2 <= 0) break;
+          ctx.strokeStyle = (borderGrad.on && (mi % 2 === 1)) ? borderGrad.c2 : borderCustom;
+          roundRectPath(ctx, x + moff, y + moff, mw2, mh2, Math.max(0, r - moff)); ctx.stroke();
+        }
+      } else if (borderLine === 'double') {
         var gap = Math.max(2, bw * 0.5), thin = Math.max(1.5, (bw - gap) / 2);
         ctx.lineWidth = thin;
         roundRectPath(ctx, x, y, w, h, r); ctx.stroke();
@@ -2123,6 +2208,27 @@
         roundRectPath(ctx, x + d, y + d, w - 2 * d, h - 2 * d, Math.max(0, r - d)); ctx.stroke();
       } else {
         roundRectPath(ctx, x, y, w, h, r); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      if (borderGlitch.on) {
+        var go = borderGlitch.off;
+        ctx.save();
+        ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = bw; ctx.lineJoin = 'round';
+        ctx.strokeStyle = 'rgba(255,48,48,0.85)';
+        ctx.save(); ctx.translate(go, -go * 0.5); styledPath(); ctx.stroke(); ctx.restore();
+        ctx.strokeStyle = 'rgba(48,170,255,0.85)';
+        ctx.save(); ctx.translate(-go, go * 0.5); styledPath(); ctx.stroke(); ctx.restore();
+        ctx.restore();
+      }
+      if (borderNeon.on) {
+        ctx.save();
+        ctx.lineJoin = 'round'; ctx.setLineDash([]);
+        ctx.shadowColor = borderCustom; ctx.strokeStyle = borderCustom; ctx.lineWidth = bw;
+        for (var np = 0; np < 3; np++) { ctx.shadowBlur = borderNeon.size; styledPath(); ctx.stroke(); }
+        ctx.shadowBlur = borderNeon.size * 0.5;
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, bw * 0.32);
+        styledPath(); ctx.stroke();
+        ctx.restore();
       }
       ctx.restore();
     }
@@ -2205,6 +2311,30 @@
       ctx.fillText('JEREMIAH', tx, y0 + pillH / 2 + nameFs - 1);
     }
 
+    function drawMattedPhoto(ctx, W, H) {
+      var m = borderMat.w;
+      var iw0 = W - 2 * m, ih0 = H - 2 * m;
+      if (iw0 <= 0 || ih0 <= 0) { ctx.drawImage(gradeCanvas, 0, 0); return; }
+      ctx.save();
+      ctx.fillStyle = borderMat.color; ctx.fillRect(0, 0, W, H);
+      var rad = (borderMat.tilt || 0) * Math.PI / 180;
+      var cosA = Math.abs(Math.cos(rad)), sinA = Math.abs(Math.sin(rad));
+      var iw = iw0, ih = ih0;
+      var bbw = iw * cosA + ih * sinA, bbh = iw * sinA + ih * cosA;
+      var fit = Math.min(1, (W - 8) / bbw, (H - 8) / bbh);
+      iw *= fit; ih *= fit;
+      ctx.translate(W / 2, H / 2);
+      if (rad) ctx.rotate(rad);
+      if (borderMat.shadow) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 34; ctx.shadowOffsetY = 18;
+        ctx.fillStyle = '#000'; ctx.fillRect(-iw / 2, -ih / 2, iw, ih);
+        ctx.restore();
+      }
+      ctx.drawImage(gradeCanvas, 0, 0, W, H, -iw / 2, -ih / 2, iw, ih);
+      ctx.restore();
+    }
+
     function drawThumb() {
       var c = document.getElementById('thumbCanvas');
       if (!c) return;
@@ -2218,7 +2348,7 @@
       }
       if (thumbFrameImg && thumbFrameImg.complete && thumbFrameImg.naturalWidth) {
         if (!gradeReady) rebuildGrade(true);
-        ctx.drawImage(gradeCanvas, 0, 0);
+        if (borderMat.on) { drawMattedPhoto(ctx, 1280, 720); } else { ctx.drawImage(gradeCanvas, 0, 0); }
       } else { ctx.fillStyle = '#0d0d10'; ctx.fillRect(0, 0, 1280, 720); }
       if (trim.l > 0 || trim.r > 0 || trim.t > 0 || trim.b > 0) {
         // Crop: paint black over the trimmed edges; the image underneath stays exactly put.
@@ -3707,14 +3837,43 @@
         btn.addEventListener('click', function () {
           borderLine = btn.getAttribute('data-bline');
           Array.prototype.forEach.call(lseg.querySelectorAll('button'), function (b) { b.classList.remove('sel'); });
-          btn.classList.add('sel'); drawThumb();
+          btn.classList.add('sel');
+          var cp = document.getElementById('borderCornerPanel'); if (cp) cp.style.display = (borderLine === 'corners') ? 'block' : 'none';
+          var rp = document.getElementById('borderRoughPanel'); if (rp) rp.style.display = (borderLine === 'rough') ? 'block' : 'none';
+          drawThumb();
         });
       });
       var gradOn = document.getElementById('borderGradOn'), gradPanel = document.getElementById('borderGradPanel'), gradRow = document.getElementById('borderGradRow');
       if (gradRow) buildSwatchPick(gradRow, function () { return borderGrad.c2; }, function (col) { borderGrad.c2 = col; drawThumb(); });
       if (gradOn) gradOn.addEventListener('change', function () { borderGrad.on = gradOn.checked; if (gradPanel) gradPanel.style.display = gradOn.checked ? 'block' : 'none'; drawThumb(); });
+      var gdir = document.getElementById('borderGradDir');
+      if (gdir) Array.prototype.forEach.call(gdir.querySelectorAll('button'), function (btn) {
+        btn.addEventListener('click', function () {
+          borderGrad.dir = btn.getAttribute('data-gdir');
+          Array.prototype.forEach.call(gdir.querySelectorAll('button'), function (b) { b.classList.remove('sel'); });
+          btn.classList.add('sel'); drawThumb();
+        });
+      });
       var glowOn = document.getElementById('borderGlowOn'), glowPanel = document.getElementById('borderGlowPanel');
       if (glowOn) glowOn.addEventListener('change', function () { borderGlow.on = glowOn.checked; if (glowPanel) glowPanel.style.display = glowOn.checked ? 'block' : 'none'; drawThumb(); });
+      var neonOn = document.getElementById('borderNeonOn'), neonPanel = document.getElementById('borderNeonPanel');
+      if (neonOn) neonOn.addEventListener('change', function () { borderNeon.on = neonOn.checked; if (neonPanel) neonPanel.style.display = neonOn.checked ? 'block' : 'none'; drawThumb(); });
+      makeDial('dBorderNeon', { get: function () { return borderNeon.size; }, set: function (v) { borderNeon.size = v; }, min: 4, max: 60, step: 1, def: 22, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      var glitchOn = document.getElementById('borderGlitchOn'), glitchPanel = document.getElementById('borderGlitchPanel');
+      if (glitchOn) glitchOn.addEventListener('change', function () { borderGlitch.on = glitchOn.checked; if (glitchPanel) glitchPanel.style.display = glitchOn.checked ? 'block' : 'none'; drawThumb(); });
+      makeDial('dBorderGlitch', { get: function () { return borderGlitch.off; }, set: function (v) { borderGlitch.off = v; }, min: 1, max: 24, step: 1, def: 6, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dBorderMats', { get: function () { return borderMats; }, set: function (v) { borderMats = v; }, min: 1, max: 5, step: 1, def: 1, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dBorderGap', { get: function () { return borderGap; }, set: function (v) { borderGap = v; }, min: 0, max: 40, step: 1, def: 6, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dBorderCornerLen', { get: function () { return borderCornerLen; }, set: function (v) { borderCornerLen = v; }, min: 20, max: 320, step: 2, def: 90, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dBorderRough', { get: function () { return borderRough; }, set: function (v) { borderRough = v; }, min: 1, max: 30, step: 1, def: 6, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      var matOn = document.getElementById('borderMatOn'), matPanel = document.getElementById('borderMatPanel');
+      if (matOn) matOn.addEventListener('change', function () { borderMat.on = matOn.checked; if (matPanel) matPanel.style.display = matOn.checked ? 'block' : 'none'; drawThumb(); });
+      var matRow = document.getElementById('borderMatRow');
+      if (matRow) buildSwatchPick(matRow, function () { return borderMat.color; }, function (col) { borderMat.color = col; drawThumb(); });
+      var matShadow = document.getElementById('borderMatShadow');
+      if (matShadow) matShadow.addEventListener('change', function () { borderMat.shadow = matShadow.checked; drawThumb(); });
+      makeDial('dBorderMatW', { get: function () { return borderMat.w; }, set: function (v) { borderMat.w = v; }, min: 10, max: 200, step: 2, def: 70, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dBorderMatTilt', { get: function () { return borderMat.tilt; }, set: function (v) { borderMat.tilt = v; }, min: -20, max: 20, step: 1, def: 0, fmt: function (v) { return Math.round(v) + '°'; }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
       var matchBtn = document.getElementById('borderMatchBtn');
       if (matchBtn) matchBtn.addEventListener('click', function () {
         if (!matchBorderToPhoto()) return;
