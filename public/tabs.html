@@ -690,7 +690,6 @@
       <div id="borderToggle" class="segmented">
         <button type="button" data-border="brand" class="sel">Brand</button>
         <button type="button" data-border="custom">Custom</button>
-        <button type="button" data-border="film">Film</button>
         <button type="button" data-border="none">None</button>
       </div>
       <div id="borderCustomPanel" style="display:none; margin-top:12px">
@@ -754,6 +753,47 @@
           </div>
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:12px 0 4px;cursor:pointer"><input type="checkbox" id="borderMatShadow" checked>Drop shadow</label>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="borderFilmOn">Film strip</label>
+        <div id="borderFilmPanel" style="display:none">
+          <span class="tt-label" style="display:block;margin:0 0 8px">Bar color</span>
+          <div id="borderFilmBarRow" class="swatchpick"></div>
+          <span class="tt-label" style="display:block;margin:12px 0 8px">Sprocket color</span>
+          <div id="borderFilmHoleRow" class="swatchpick"></div>
+          <div class="texttools" style="margin-top:10px">
+            <div class="tt-block"><span class="tt-label">Bar</span><div class="dial" id="dFilmBar" style="min-width:58px"><span class="dk">Bar</span><span class="dv">9</span></div></div>
+            <div class="tt-block"><span class="tt-label">Holes</span><div class="dial" id="dFilmHole" style="min-width:58px"><span class="dk">Size</span><span class="dv">100</span></div></div>
+            <div class="tt-block"><span class="tt-label">Spacing</span><div class="dial" id="dFilmGap" style="min-width:58px"><span class="dk">Gap</span><span class="dv">100</span></div></div>
+          </div>
+          <span class="tt-label" style="display:block;margin:12px 0 8px">Hole shape</span>
+          <div id="borderFilmShape" class="segmented">
+            <button type="button" data-fshape="classic" class="sel">Classic</button>
+            <button type="button" data-fshape="round">Round</button>
+            <button type="button" data-fshape="square">Square</button>
+          </div>
+          <span class="tt-label" style="display:block;margin:12px 0 8px">Sides</span>
+          <div id="borderFilmSides" class="segmented">
+            <button type="button" data-fsides="tb" class="sel">Top+Bottom</button>
+            <button type="button" data-fsides="all">All 4</button>
+            <button type="button" data-fsides="lr">Sides</button>
+          </div>
+          <span class="tt-label" style="display:block;margin:12px 0 6px">Edge text</span>
+          <input type="text" id="borderFilmText" placeholder="KODAK 5219" maxlength="24" style="width:100%;font:inherit;color:var(--text);padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:var(--field)">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:12px 0 4px;cursor:pointer"><input type="checkbox" id="borderFilmNums">Frame numbers</label>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="borderMotionOn">Motion</label>
+        <div id="borderMotionPanel" style="display:none">
+          <span class="tt-label" style="display:block;margin:0 0 8px">Style</span>
+          <div id="borderMotionStyle" class="segmented">
+            <button type="button" data-mstyle="blur" class="sel">Image blur</button>
+            <button type="button" data-mstyle="trail">Border trail</button>
+          </div>
+          <div class="texttools" style="margin-top:10px">
+            <div class="tt-block"><span class="tt-label">Amount</span><div class="dial" id="dMotionAmt" style="min-width:68px"><span class="dk">Amt</span><span class="dv">30</span></div></div>
+            <div class="tt-block"><span class="tt-label">Angle</span><div class="dial" id="dMotionAngle" style="min-width:68px"><span class="dk">Ang</span><span class="dv">0°</span></div></div>
+          </div>
+        </div>
+        <button type="button" id="borderAnimBtn" class="secondary" style="margin-top:18px;width:100%">Animate &amp; export loop</button>
+        <div class="tt-label" style="margin-top:6px;opacity:.72;line-height:1.45">Records a short looping video (MP4/WebM) of the live effects — great for Shorts, YouTube community posts &amp; socials. This is a moving clip, not the static thumbnail YouTube uses.</div>
       </div>
         </div>
       </div>
@@ -880,7 +920,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.9</div>
+    <div class="foot">Magic Marquee · v3.12</div>
   </div>
 
   <script>
@@ -956,6 +996,8 @@
     let borderMats = 1, borderGap = 6;
     let borderCornerLen = 90, borderRough = 6;
     let borderMat = { on: false, w: 70, color: '#ffffff', shadow: true, tilt: 0 };
+    let borderFilm = { on: false, barColor: '#0b0b0b', barPct: 9, holeColor: '#f4f4f2', holeScale: 1, gapScale: 1, shape: 'classic', sides: 'tb', text: '', nums: false, scroll: 0 };
+    let borderMotion = { on: false, style: 'blur', amount: 30, angle: 0 };
     let borderGlow = { on: false, size: 18 };                // outer glow in the border color
     var styleFx = {
       cinematic: { on: true, strength: 1, color: '#000000' },
@@ -2145,23 +2187,67 @@
     }
 
     function drawFilmStrip(ctx, W, H) {
-      var barH = Math.round(H * 0.085);
-      ctx.fillStyle = '#0b0b0b';
-      ctx.fillRect(0, 0, W, barH); ctx.fillRect(0, H - barH, W, barH);
-      var holeW = Math.round(barH * 0.6), holeH = Math.round(barH * 0.4), rad = Math.round(holeH * 0.3);
-      var gap = Math.round(holeW * 0.55), pitch = holeW + gap;
-      var n = Math.floor((W + gap) / pitch);
-      var startX = Math.round((W - (n * pitch - gap)) / 2);
-      var topY = Math.round((barH - holeH) / 2), botY = H - barH + topY;
-      ctx.fillStyle = '#f4f4f2';
-      for (var i = 0; i < n; i++) {
-        var hx = startX + i * pitch;
-        roundRectPath(ctx, hx, topY, holeW, holeH, rad); ctx.fill();
-        roundRectPath(ctx, hx, botY, holeW, holeH, rad); ctx.fill();
+      var f = borderFilm;
+      var barH = Math.max(8, Math.round(H * (f.barPct / 100)));
+      var doTop = (f.sides === 'tb' || f.sides === 'all');
+      var doBot = (f.sides === 'tb' || f.sides === 'all');
+      var doLeft = (f.sides === 'lr' || f.sides === 'all');
+      var doRight = (f.sides === 'lr' || f.sides === 'all');
+      ctx.save();
+      ctx.fillStyle = f.barColor;
+      if (doTop) ctx.fillRect(0, 0, W, barH);
+      if (doBot) ctx.fillRect(0, H - barH, W, barH);
+      if (doLeft) ctx.fillRect(0, 0, barH, H);
+      if (doRight) ctx.fillRect(W - barH, 0, barH, H);
+      var holeW = Math.max(4, Math.round(barH * 0.6 * f.holeScale));
+      var holeH = Math.max(3, Math.round(barH * 0.4 * f.holeScale));
+      var rad = Math.max(1, Math.round(holeH * 0.3));
+      var gap = Math.max(4, Math.round(holeW * 0.55 * f.gapScale));
+      var pitch = holeW + gap;
+      var scroll = f.scroll || 0;
+      ctx.fillStyle = f.holeColor;
+      function hole(cx, cy) {
+        if (f.shape === 'round') { ctx.beginPath(); ctx.ellipse(cx, cy, holeW / 2, holeH / 2, 0, 0, Math.PI * 2); ctx.fill(); }
+        else if (f.shape === 'square') { ctx.fillRect(cx - holeW / 2, cy - holeH / 2, holeW, holeH); }
+        else { roundRectPath(ctx, cx - holeW / 2, cy - holeH / 2, holeW, holeH, rad); ctx.fill(); }
       }
+      if (doTop || doBot) {
+        var nH = Math.floor((W + gap) / pitch);
+        var baseX = Math.round((W - (nH * pitch - gap)) / 2) + holeW / 2;
+        for (var i = -1; i <= nH; i++) {
+          var cx = baseX + i * pitch + (scroll % pitch);
+          if (cx < -holeW || cx > W + holeW) continue;
+          if (doTop) hole(cx, barH / 2);
+          if (doBot) hole(cx, H - barH / 2);
+        }
+      }
+      if (doLeft || doRight) {
+        var nV = Math.floor((H + gap) / pitch);
+        var baseY = Math.round((H - (nV * pitch - gap)) / 2) + holeH / 2;
+        for (var j = -1; j <= nV; j++) {
+          var cy = baseY + j * pitch + (scroll % pitch);
+          if (cy < -holeH || cy > H + holeH) continue;
+          if (doLeft) hole(barH / 2, cy);
+          if (doRight) hole(W - barH / 2, cy);
+        }
+      }
+      if (f.text || f.nums) {
+        var hc = hexToRgb(f.holeColor);
+        ctx.fillStyle = 'rgba(' + hc[0] + ',' + hc[1] + ',' + hc[2] + ',0.9)';
+        var fs = Math.max(9, Math.round(barH * 0.34));
+        ctx.font = '700 ' + fs + "px 'Courier New', monospace";
+        ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        if (f.text) ctx.fillText(String(f.text).toUpperCase(), 16, (doTop ? barH : 0) + fs);
+        if (f.nums) {
+          var ny = (doBot ? H - barH : H) - fs, step = pitch * 2, num = 1;
+          for (var nx = 22; nx < W - 60; nx += step) { ctx.fillText(num + 'A', nx, ny); num++; }
+        }
+      }
+      ctx.restore();
     }
 
     function drawCustomBorder(ctx, W, H) {
+      if (borderFilm.on) { drawFilmStrip(ctx, W, H); return; }
       var inset = borderInset, r = borderR, bw = borderW;
       var x = inset, y = inset, w = W - 2 * inset, h = H - 2 * inset;
       if (w <= 0 || h <= 0) return;
@@ -2228,6 +2314,17 @@
         ctx.shadowBlur = borderNeon.size * 0.5;
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, bw * 0.32);
         styledPath(); ctx.stroke();
+        ctx.restore();
+      }
+      if (borderMotion.on && borderMotion.style === 'trail') {
+        var mang = borderMotion.angle * Math.PI / 180, mdx = Math.cos(mang), mdy = Math.sin(mang), mamt = borderMotion.amount;
+        ctx.save();
+        ctx.setLineDash([]); ctx.lineWidth = bw; ctx.lineJoin = 'round'; ctx.strokeStyle = borderCustom; ctx.shadowBlur = 0;
+        for (var ti = 1; ti <= 6; ti++) {
+          ctx.globalAlpha = 0.45 * (1 - (ti - 1) / 6);
+          var moff = mamt * (ti / 6);
+          ctx.save(); ctx.translate(mdx * moff, mdy * moff); styledPath(); ctx.stroke(); ctx.restore();
+        }
         ctx.restore();
       }
       ctx.restore();
@@ -2335,6 +2432,75 @@
       ctx.restore();
     }
 
+        function drawMotionPhoto(ctx, W, H) {
+      var amt = borderMotion.amount;
+      var ang = borderMotion.angle * Math.PI / 180, dx = Math.cos(ang), dy = Math.sin(ang);
+      var sc = 1 + (amt * 1.4) / W;
+      var ow = W * sc, oh = H * sc, ox = (W - ow) / 2, oy = (H - oh) / 2;
+      var nstep = 10;
+      ctx.save();
+      ctx.globalAlpha = 1.7 / nstep;
+      for (var i = 0; i < nstep; i++) {
+        var t = (i / (nstep - 1)) - 0.5;
+        ctx.drawImage(gradeCanvas, ox + dx * amt * t, oy + dy * amt * t, ow, oh);
+      }
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(gradeCanvas, 0, 0, W, H);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    function animateAndExport() {
+      var canvas = document.getElementById('thumbCanvas');
+      if (!canvas || !canvas.captureStream || typeof MediaRecorder === 'undefined') {
+        alert('Animated export needs a newer browser (canvas capture + MediaRecorder). Try desktop Chrome, or Safari 16 and up.');
+        return;
+      }
+      var mimes = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+      var mime = '';
+      for (var mi = 0; mi < mimes.length; mi++) { if (MediaRecorder.isTypeSupported(mimes[mi])) { mime = mimes[mi]; break; } }
+      if (!mime) { alert('This browser has no supported video format for recording.'); return; }
+      var ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+      var btn = document.getElementById('borderAnimBtn');
+      var lbl = btn ? btn.textContent : '';
+      var snap = { neon: borderNeon.size, glitch: borderGlitch.off, glow: borderGlow.size, gradAngle: borderGrad.angle, filmScroll: borderFilm.scroll };
+      function restore() {
+        borderNeon.size = snap.neon; borderGlitch.off = snap.glitch; borderGlow.size = snap.glow;
+        borderGrad.angle = snap.gradAngle; borderFilm.scroll = snap.filmScroll; drawThumb();
+        if (btn) { btn.disabled = false; btn.textContent = lbl; }
+      }
+      var stream = canvas.captureStream(30);
+      var rec;
+      try { rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 }); }
+      catch (e) { try { rec = new MediaRecorder(stream); } catch (e2) { alert('Could not start recording in this browser.'); return; } }
+      var chunks = [];
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = function () {
+        restore();
+        var blob = new Blob(chunks, { type: mime });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url; a.download = 'thumbnail-motion.' + ext;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      };
+      var DUR = 2600, t0 = performance.now();
+      if (btn) { btn.disabled = true; btn.textContent = 'Recording…'; }
+      try { rec.start(); } catch (e) { restore(); alert('Could not start recording in this browser.'); return; }
+      function frame(now) {
+        var el = now - t0, t = el / DUR; if (t > 1) t = 1;
+        var ph = t * Math.PI * 2;
+        if (borderNeon.on) borderNeon.size = Math.max(2, snap.neon * (1 + 0.6 * Math.sin(ph)));
+        if (borderGlow.on) borderGlow.size = Math.max(1, snap.glow * (1 + 0.5 * Math.sin(ph)));
+        if (borderGlitch.on) borderGlitch.off = Math.max(0, snap.glitch * (0.4 + Math.abs(Math.sin(ph * 3))));
+        if (borderGrad.on && borderGrad.dir === 'around') borderGrad.angle = (snap.gradAngle + t * 360) % 360;
+        if (borderFilm.on) borderFilm.scroll = snap.filmScroll + t * 120;
+        drawThumb();
+        if (el < DUR) requestAnimationFrame(frame);
+        else { try { rec.stop(); } catch (e) {} }
+      }
+      requestAnimationFrame(frame);
+    }
+
     function drawThumb() {
       var c = document.getElementById('thumbCanvas');
       if (!c) return;
@@ -2348,7 +2514,7 @@
       }
       if (thumbFrameImg && thumbFrameImg.complete && thumbFrameImg.naturalWidth) {
         if (!gradeReady) rebuildGrade(true);
-        if (borderMat.on) { drawMattedPhoto(ctx, 1280, 720); } else { ctx.drawImage(gradeCanvas, 0, 0); }
+        if (borderMat.on) { drawMattedPhoto(ctx, 1280, 720); } else if (borderMotion.on && borderMotion.style === 'blur') { drawMotionPhoto(ctx, 1280, 720); } else { ctx.drawImage(gradeCanvas, 0, 0); }
       } else { ctx.fillStyle = '#0d0d10'; ctx.fillRect(0, 0, 1280, 720); }
       if (trim.l > 0 || trim.r > 0 || trim.t > 0 || trim.b > 0) {
         // Crop: paint black over the trimmed edges; the image underneath stays exactly put.
@@ -3874,6 +4040,31 @@
       if (matShadow) matShadow.addEventListener('change', function () { borderMat.shadow = matShadow.checked; drawThumb(); });
       makeDial('dBorderMatW', { get: function () { return borderMat.w; }, set: function (v) { borderMat.w = v; }, min: 10, max: 200, step: 2, def: 70, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
       makeDial('dBorderMatTilt', { get: function () { return borderMat.tilt; }, set: function (v) { borderMat.tilt = v; }, min: -20, max: 20, step: 1, def: 0, fmt: function (v) { return Math.round(v) + '°'; }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      var filmOn = document.getElementById('borderFilmOn'), filmPanel = document.getElementById('borderFilmPanel');
+      if (filmOn) filmOn.addEventListener('change', function () { borderFilm.on = filmOn.checked; if (filmPanel) filmPanel.style.display = filmOn.checked ? 'block' : 'none'; drawThumb(); });
+      var filmBarRow = document.getElementById('borderFilmBarRow');
+      if (filmBarRow) buildSwatchPick(filmBarRow, function () { return borderFilm.barColor; }, function (col) { borderFilm.barColor = col; drawThumb(); });
+      var filmHoleRow = document.getElementById('borderFilmHoleRow');
+      if (filmHoleRow) buildSwatchPick(filmHoleRow, function () { return borderFilm.holeColor; }, function (col) { borderFilm.holeColor = col; drawThumb(); });
+      makeDial('dFilmBar', { get: function () { return borderFilm.barPct; }, set: function (v) { borderFilm.barPct = v; }, min: 4, max: 20, step: 1, def: 9, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dFilmHole', { get: function () { return Math.round(borderFilm.holeScale * 100); }, set: function (v) { borderFilm.holeScale = v / 100; }, min: 40, max: 200, step: 5, def: 100, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dFilmGap', { get: function () { return Math.round(borderFilm.gapScale * 100); }, set: function (v) { borderFilm.gapScale = v / 100; }, min: 40, max: 200, step: 5, def: 100, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      var filmShape = document.getElementById('borderFilmShape');
+      if (filmShape) Array.prototype.forEach.call(filmShape.querySelectorAll('button'), function (btn) { btn.addEventListener('click', function () { borderFilm.shape = btn.getAttribute('data-fshape'); Array.prototype.forEach.call(filmShape.querySelectorAll('button'), function (b) { b.classList.remove('sel'); }); btn.classList.add('sel'); drawThumb(); }); });
+      var filmSides = document.getElementById('borderFilmSides');
+      if (filmSides) Array.prototype.forEach.call(filmSides.querySelectorAll('button'), function (btn) { btn.addEventListener('click', function () { borderFilm.sides = btn.getAttribute('data-fsides'); Array.prototype.forEach.call(filmSides.querySelectorAll('button'), function (b) { b.classList.remove('sel'); }); btn.classList.add('sel'); drawThumb(); }); });
+      var filmText = document.getElementById('borderFilmText');
+      if (filmText) filmText.addEventListener('input', function () { borderFilm.text = filmText.value; drawThumb(); });
+      var filmNums = document.getElementById('borderFilmNums');
+      if (filmNums) filmNums.addEventListener('change', function () { borderFilm.nums = filmNums.checked; drawThumb(); });
+      var motionOn = document.getElementById('borderMotionOn'), motionPanel = document.getElementById('borderMotionPanel');
+      if (motionOn) motionOn.addEventListener('change', function () { borderMotion.on = motionOn.checked; if (motionPanel) motionPanel.style.display = motionOn.checked ? 'block' : 'none'; drawThumb(); });
+      var motionStyle = document.getElementById('borderMotionStyle');
+      if (motionStyle) Array.prototype.forEach.call(motionStyle.querySelectorAll('button'), function (btn) { btn.addEventListener('click', function () { borderMotion.style = btn.getAttribute('data-mstyle'); Array.prototype.forEach.call(motionStyle.querySelectorAll('button'), function (b) { b.classList.remove('sel'); }); btn.classList.add('sel'); drawThumb(); }); });
+      makeDial('dMotionAmt', { get: function () { return borderMotion.amount; }, set: function (v) { borderMotion.amount = v; }, min: 4, max: 80, step: 2, def: 30, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      makeDial('dMotionAngle', { get: function () { return borderMotion.angle; }, set: function (v) { borderMotion.angle = v; }, min: 0, max: 180, step: 5, def: 0, fmt: function (v) { return Math.round(v) + '°'; }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      var animBtn = document.getElementById('borderAnimBtn');
+      if (animBtn) animBtn.addEventListener('click', animateAndExport);
       var matchBtn = document.getElementById('borderMatchBtn');
       if (matchBtn) matchBtn.addEventListener('click', function () {
         if (!matchBorderToPhoto()) return;
