@@ -798,7 +798,7 @@
         </div>
       </div>
       <div class="accg" data-acc="badge">
-        <button type="button" class="accg-h" aria-expanded="false"><span class="accg-t">Badge</span><svg class="accg-x" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
+        <button type="button" class="accg-h" aria-expanded="false"><span class="accg-t">Logo</span><svg class="accg-x" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
         <div class="accg-b">
         <div class="tt-block">
           <span class="tt-label">Logo corner</span>
@@ -809,6 +809,59 @@
             <button type="button" data-c="br" aria-label="Bottom right">&#8600;</button>
             <button type="button" id="logoHide" aria-label="Hide logo" title="Hide logo" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:var(--surface);border:1.5px solid rgba(255,255,255,.2);color:var(--text-soft);font-size:14px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 5px rgba(0,0,0,.45);cursor:pointer">&#8856;</button>
           </div>
+        </div>
+        <span class="tt-label" style="display:block;margin:14px 0 8px">Backing shape</span>
+        <div id="logoShape" class="segmented">
+          <button type="button" data-lshape="pill" class="sel">Pill</button>
+          <button type="button" data-lshape="circle">Circle</button>
+          <button type="button" data-lshape="rect">Rect</button>
+          <button type="button" data-lshape="shield">Shield</button>
+          <button type="button" data-lshape="none">None</button>
+        </div>
+        <span class="tt-label" style="display:block;margin:12px 0 8px">Plate color</span>
+        <div id="logoPlateRow" class="swatchpick"></div>
+        <div class="texttools" style="margin-top:10px">
+          <div class="tt-block"><span class="tt-label">Opacity</span><div class="dial" id="dLogoPlateAlpha" style="min-width:68px"><span class="dk">Plate</span><span class="dv">50%</span></div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="logoAvatarOn" checked>Show photo</label>
+        <div id="logoPhotoPanel">
+          <div style="display:flex;gap:8px;margin:4px 0 10px">
+            <input type="file" id="logoImgFile" accept="image/*" style="display:none">
+            <button type="button" id="logoImgBtn" class="secondary" style="flex:1;margin:0">Upload image</button>
+            <button type="button" id="logoImgClear" class="secondary" style="flex:0 0 auto;width:auto;padding:9px 12px;margin:0;display:none">Remove</button>
+          </div>
+          <div id="logoFitRow" style="display:none;margin-bottom:10px">
+            <span class="tt-label" style="display:block;margin:0 0 8px">Image fit</span>
+            <div id="logoImgFit" class="segmented">
+              <button type="button" data-ifit="fill" class="sel">Fill</button>
+              <button type="button" data-ifit="fit">Fit</button>
+            </div>
+          </div>
+          <span class="tt-label" style="display:block;margin:4px 0 8px">Photo shape</span>
+          <div id="logoAvatarShape" class="segmented">
+            <button type="button" data-ashape="circle" class="sel">Circle</button>
+            <button type="button" data-ashape="rounded">Rounded</button>
+            <button type="button" data-ashape="square">Square</button>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:12px 0 8px;cursor:pointer"><input type="checkbox" id="logoRingOn" checked>Ring</label>
+          <div id="logoRingPanel">
+            <span class="tt-label" style="display:block;margin:0 0 8px">Ring color</span>
+            <div id="logoRingRow" class="swatchpick"></div>
+            <div class="texttools" style="margin-top:10px">
+              <div class="tt-block"><span class="tt-label">Ring width</span><div class="dial" id="dLogoRingW" style="min-width:68px"><span class="dk">Ring</span><span class="dv">3</span></div></div>
+            </div>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:16px 0 8px;cursor:pointer"><input type="checkbox" id="logoTextOn" checked>Show wordmark</label>
+        <div id="logoTextPanel">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="logoLine1" type="text" maxlength="20" placeholder="Line 1" value="ISAIAH" style="flex:1;min-width:0;margin:0;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit">
+            <input id="logoLine2" type="text" maxlength="20" placeholder="Line 2" value="JEREMIAH" style="flex:1;min-width:0;margin:0;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit">
+          </div>
+          <span class="tt-label" style="display:block;margin:4px 0 8px">Font</span>
+          <select id="logoFont" class="optsel" style="width:100%"></select>
+          <span class="tt-label" style="display:block;margin:12px 0 8px">Text color</span>
+          <div id="logoTextRow" class="swatchpick"></div>
         </div>
         </div>
       </div>
@@ -920,7 +973,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.12</div>
+    <div class="foot">Magic Marquee · v3.15</div>
   </div>
 
   <script>
@@ -987,6 +1040,7 @@
     let thumbPos = 'bl';          // text anchor: [t/m/b][l/c/r]
     let thumbStyle = 'custom'; // single editor (scrim store = styleFx.custom); was Brand/Custom toggle
     let badgeCorner = ''; // '' = per-style default; else tl/tr/bl/br (user override)
+    let logo = { shape: 'pill', plateColor: '#000000', plateAlpha: 0.5, avatarOn: true, avatarShape: 'circle', imgFit: 'fill', ringOn: true, ringColor: '#ffffff', ringW: 3, textOn: true, line1: 'ISAIAH', line2: 'JEREMIAH', font: 'Montserrat', textColor: '#ffffff' };
     let borderCustom = '#ffffff'; // custom border color
     let borderW = 11, borderR = 28, borderInset = 12;        // custom border geometry
     let borderLine = 'solid';                                // solid | double | dashed | dotted
@@ -1705,6 +1759,9 @@
     var avatarReady = false;
     badgeAvatar.onload = function () { avatarReady = true; drawThumb(); };
     badgeAvatar.src = AVATAR_DATA;
+    var logoImg = new Image();
+    var logoImgReady = false;
+    logoImg.onload = function () { logoImgReady = true; drawThumb(); };
 
     var posKeys = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
     var posIcons = ['\u2196', '\u2191', '\u2197', '\u2190', '\u2022', '\u2192', '\u2199', '\u2193', '\u2198'];
@@ -1739,6 +1796,20 @@
       if (!pts.length) { roundRectPath(ctx, x, y, w, h, 0); return; }
       ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
       for (var k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      ctx.closePath();
+    }
+
+    function shieldPath(ctx, x, y, w, h) {
+      var r = Math.min(14, w * 0.18, h * 0.22);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y, x + w, y + r, r);
+      ctx.lineTo(x + w, y + h * 0.55);
+      ctx.quadraticCurveTo(x + w, y + h * 0.86, x + w / 2, y + h);
+      ctx.quadraticCurveTo(x, y + h * 0.86, x, y + h * 0.55);
+      ctx.lineTo(x, y + r);
+      ctx.arcTo(x, y, x + r, y, r);
       ctx.closePath();
     }
 
@@ -2382,30 +2453,62 @@
     function drawBadge(ctx, W, H, corner, subtle) {
       ctx.letterSpacing = '0px';
       if (badgeHidden) return;
-      var M = 34, pillH = subtle ? 70 : 84, avD = pillH - (subtle ? 16 : 22), pad = 12;
-      var nameFs = subtle ? 21 : 23;
-      ctx.font = '800 ' + nameFs + 'px Montserrat, sans-serif'; ctx.textBaseline = 'alphabetic';
-      var nameW = Math.max(ctx.measureText('ISAIAH').width, ctx.measureText('JEREMIAH').width);
-      var pillW = pad + avD + 12 + nameW + pad + 4;
+      var L = logo;
+      var M = 34, pillH = subtle ? 70 : 84, pad = 12, nameFs = subtle ? 21 : 23;
+      var avD = L.avatarOn ? (pillH - (subtle ? 16 : 22)) : 0;
+      var hasText = !!(L.textOn && (L.line1 || L.line2));
+      ctx.font = '800 ' + nameFs + 'px ' + L.font + ', sans-serif'; ctx.textBaseline = 'alphabetic';
+      var nameW = hasText ? Math.max(L.line1 ? ctx.measureText(L.line1).width : 0, L.line2 ? ctx.measureText(L.line2).width : 0) : 0;
+      var gap = (L.avatarOn && hasText) ? 12 : 0;
+      var avBlock = L.avatarOn ? avD : 0;
+      var circleSolo = (L.shape === 'circle' && !hasText && L.avatarOn);
+      var pillW = circleSolo ? pillH : (pad + avBlock + gap + (hasText ? nameW + 4 : 0) + pad);
+      if (!L.avatarOn && !hasText) pillW = pillH;
       var x0 = (corner === 'tr' || corner === 'br') ? (W - M - pillW) : M;
       var y0 = (corner === 'tl' || corner === 'tr') ? M : (H - M - pillH);
-      roundRectPath(ctx, x0, y0, pillW, pillH, 16);
-      ctx.fillStyle = subtle ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.72)'; ctx.fill();
-      if (avatarReady) {
-        var ax = x0 + pad, ay = y0 + (pillH - avD) / 2;
-        ctx.save();
-        ctx.beginPath(); ctx.arc(ax + avD / 2, ay + avD / 2, avD / 2, 0, Math.PI * 2); ctx.clip();
-        ctx.drawImage(badgeAvatar, ax, ay, avD, avD);
+      function platePath() {
+        if (L.shape === 'shield') { shieldPath(ctx, x0, y0, pillW, pillH); }
+        else if (circleSolo) { ctx.beginPath(); ctx.arc(x0 + pillW / 2, y0 + pillH / 2, pillH / 2, 0, Math.PI * 2); }
+        else { var r = L.shape === 'rect' ? 6 : (L.shape === 'circle' ? pillH / 2 : 16); roundRectPath(ctx, x0, y0, pillW, pillH, r); }
+      }
+      if (L.shape !== 'none') {
+        platePath();
+        var pc = hexToRgb(L.plateColor);
+        ctx.fillStyle = 'rgba(' + pc[0] + ',' + pc[1] + ',' + pc[2] + ',' + L.plateAlpha + ')';
+        ctx.fill();
+      }
+      var imgOK = L.avatarOn && (logoImgReady || avatarReady);
+      if (imgOK) {
+        var ax = circleSolo ? (x0 + (pillW - avD) / 2) : (x0 + pad);
+        var ay = y0 + (pillH - avD) / 2;
+        var avPath = function () {
+          if (L.avatarShape === 'square') { ctx.beginPath(); ctx.rect(ax, ay, avD, avD); }
+          else if (L.avatarShape === 'rounded') { roundRectPath(ctx, ax, ay, avD, avD, Math.round(avD * 0.26)); }
+          else { ctx.beginPath(); ctx.arc(ax + avD / 2, ay + avD / 2, avD / 2, 0, Math.PI * 2); }
+        };
+        ctx.save(); avPath(); ctx.clip();
+        if (logoImgReady) {
+          var iw = logoImg.naturalWidth || avD, ih = logoImg.naturalHeight || avD;
+          if (L.imgFit === 'fit') { var fsc = Math.min(avD / iw, avD / ih), dw = iw * fsc, dh = ih * fsc; ctx.drawImage(logoImg, ax + (avD - dw) / 2, ay + (avD - dh) / 2, dw, dh); }
+          else { var k = Math.max(avD / iw, avD / ih), sw = avD / k, sh = avD / k; ctx.drawImage(logoImg, (iw - sw) / 2, (ih - sh) / 2, sw, sh, ax, ay, avD, avD); }
+        } else {
+          ctx.drawImage(badgeAvatar, ax, ay, avD, avD);
+        }
         ctx.restore();
-        if (subtle) {
-          ctx.beginPath(); ctx.arc(ax + avD / 2, ay + avD / 2, avD / 2, 0, Math.PI * 2);
-          ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+        if (L.ringOn) { avPath(); ctx.lineWidth = L.ringW; ctx.strokeStyle = hexToRgba(L.ringColor, 0.85); ctx.stroke(); }
+      }
+      if (hasText) {
+        ctx.fillStyle = L.textColor;
+        var tx = x0 + pad + avBlock + gap;
+        if (L.line1 && L.line2) {
+          ctx.fillText(L.line1, tx, y0 + pillH / 2 - 3);
+          ctx.fillText(L.line2, tx, y0 + pillH / 2 + nameFs - 1);
+        } else {
+          ctx.textBaseline = 'middle';
+          ctx.fillText(L.line1 || L.line2, tx, y0 + pillH / 2);
+          ctx.textBaseline = 'alphabetic';
         }
       }
-      ctx.fillStyle = '#fff';
-      var tx = x0 + pad + avD + 12;
-      ctx.fillText('ISAIAH', tx, y0 + pillH / 2 - 3);
-      ctx.fillText('JEREMIAH', tx, y0 + pillH / 2 + nameFs - 1);
     }
 
     function drawMattedPhoto(ctx, W, H) {
@@ -3975,6 +4078,56 @@
         });
       });
       syncLogoGrid();
+    })();
+
+    (function () {
+      var num = function (v) { return Math.round(v) + ''; };
+      var shapeSeg = document.getElementById('logoShape');
+      if (shapeSeg) Array.prototype.forEach.call(shapeSeg.querySelectorAll('button'), function (btn) { btn.addEventListener('click', function () { logo.shape = btn.getAttribute('data-lshape'); Array.prototype.forEach.call(shapeSeg.querySelectorAll('button'), function (b) { b.classList.remove('sel'); }); btn.classList.add('sel'); drawThumb(); }); });
+      var plateRow = document.getElementById('logoPlateRow');
+      if (plateRow) buildSwatchPick(plateRow, function () { return logo.plateColor; }, function (col) { logo.plateColor = col; drawThumb(); });
+      makeDial('dLogoPlateAlpha', { get: function () { return Math.round(logo.plateAlpha * 100); }, set: function (v) { logo.plateAlpha = v / 100; }, min: 0, max: 100, step: 5, def: 50, fmt: function (v) { return Math.round(v) + '%'; }, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+      var avOn = document.getElementById('logoAvatarOn'), photoPanel = document.getElementById('logoPhotoPanel');
+      if (avOn) avOn.addEventListener('change', function () { logo.avatarOn = avOn.checked; if (photoPanel) photoPanel.style.display = avOn.checked ? 'block' : 'none'; drawThumb(); });
+      var avShape = document.getElementById('logoAvatarShape');
+      if (avShape) Array.prototype.forEach.call(avShape.querySelectorAll('button'), function (btn) { btn.addEventListener('click', function () { logo.avatarShape = btn.getAttribute('data-ashape'); Array.prototype.forEach.call(avShape.querySelectorAll('button'), function (b) { b.classList.remove('sel'); }); btn.classList.add('sel'); drawThumb(); }); });
+      var ringOn = document.getElementById('logoRingOn'), ringPanel = document.getElementById('logoRingPanel');
+      if (ringOn) ringOn.addEventListener('change', function () { logo.ringOn = ringOn.checked; if (ringPanel) ringPanel.style.display = ringOn.checked ? 'block' : 'none'; drawThumb(); });
+      var ringRow = document.getElementById('logoRingRow');
+      if (ringRow) buildSwatchPick(ringRow, function () { return logo.ringColor; }, function (col) { logo.ringColor = col; drawThumb(); });
+      makeDial('dLogoRingW', { get: function () { return logo.ringW; }, set: function (v) { logo.ringW = v; }, min: 1, max: 8, step: 1, def: 3, fmt: num, onInput: function () { drawThumb(); }, onChange: function () { drawThumb(); } });
+    })();
+
+    (function () {
+      var txOn = document.getElementById('logoTextOn'), txPanel = document.getElementById('logoTextPanel');
+      if (txOn) txOn.addEventListener('change', function () { logo.textOn = txOn.checked; if (txPanel) txPanel.style.display = txOn.checked ? 'block' : 'none'; drawThumb(); });
+      var l1 = document.getElementById('logoLine1'); if (l1) l1.addEventListener('input', function () { logo.line1 = l1.value; drawThumb(); });
+      var l2 = document.getElementById('logoLine2'); if (l2) l2.addEventListener('input', function () { logo.line2 = l2.value; drawThumb(); });
+      var sel = document.getElementById('logoFont');
+      if (sel) {
+        fontList.forEach(function (it) { var o = document.createElement('option'); o.value = it.f; o.textContent = it.label; o.style.fontFamily = '"' + it.f + '", sans-serif'; if (it.f === logo.font) o.selected = true; sel.appendChild(o); });
+        sel.addEventListener('change', function () { logo.font = sel.value; drawThumb(); });
+      }
+      var txRow = document.getElementById('logoTextRow');
+      if (txRow) buildSwatchPick(txRow, function () { return logo.textColor; }, function (col) { logo.textColor = col; drawThumb(); });
+    })();
+
+    (function () {
+      var file = document.getElementById('logoImgFile');
+      var btn = document.getElementById('logoImgBtn');
+      var clr = document.getElementById('logoImgClear');
+      var fitRow = document.getElementById('logoFitRow');
+      var fitSeg = document.getElementById('logoImgFit');
+      if (btn && file) btn.addEventListener('click', function () { file.click(); });
+      if (file) file.addEventListener('change', function () {
+        var f = file.files && file.files[0]; if (!f) return;
+        var rd = new FileReader();
+        rd.onload = function () { logoImg.src = rd.result; if (clr) clr.style.display = ''; if (fitRow) fitRow.style.display = ''; };
+        rd.readAsDataURL(f);
+        file.value = '';
+      });
+      if (clr) clr.addEventListener('click', function () { logoImgReady = false; try { logoImg.removeAttribute('src'); } catch (e) {} clr.style.display = 'none'; if (fitRow) fitRow.style.display = 'none'; drawThumb(); });
+      if (fitSeg) Array.prototype.forEach.call(fitSeg.querySelectorAll('button'), function (b) { b.addEventListener('click', function () { logo.imgFit = b.getAttribute('data-ifit'); Array.prototype.forEach.call(fitSeg.querySelectorAll('button'), function (c) { c.classList.remove('sel'); }); b.classList.add('sel'); drawThumb(); }); });
     })();
 
     (function () {
