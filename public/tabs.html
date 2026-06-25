@@ -578,23 +578,42 @@
         <span class="tt-label">Text color</span>
         <div id="fxTextSw" class="swatchpick"></div>
       </div>
+      <div class="hlwrap">
+        <span class="tt-label">Text gradient</span>
+        <button type="button" id="txGradTog" class="gradtog">+ Gradient</button>
+        <div id="txGradPanel" class="gradpanel" style="display:none">
+          <span class="tt-label" style="display:block;margin-bottom:8px">Text gradient</span>
+          <div class="gmode"><button type="button" id="txGmode1" class="gm1 sel">Color 1</button><button type="button" id="txGmode2" class="gm2">Color 2</button></div>
+          <div class="texttools" style="margin-top:10px">
+            <div class="tt-block"><span class="tt-label">Angle</span><div class="dial" id="dTxAngle" style="min-width:76px"><span class="dk">Angle</span><span class="dv" id="txAngleVal">90&deg;</span></div></div>
+            <div class="tt-block"><span class="tt-label">Blend</span><div class="dial" id="dTxMid" style="min-width:76px"><span class="dk">Blend</span><span class="dv" id="txMidVal">50%</span></div></div>
+            <div class="tt-block"><span class="tt-label">Spread</span><label class="gwhole"><input type="checkbox" id="txWhole"> Whole text</label></div>
+          </div>
+          <p class="hint" style="margin:8px 0 0">Pick the two colors from the swatches above &mdash; <b style="color:#ff453a">red ring</b> = color 1, <b style="color:#0a84ff">blue ring</b> = color 2.</p>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin:8px 0 12px;cursor:pointer"><input type="checkbox" id="fitToggle" checked>Fit each row to width</label>
       <div class="texttools">
         <div class="tt-block">
           <span class="tt-label">Position</span>
           <div id="posGrid" class="posgrid"></div>
         </div>
         <div class="tt-block">
-          <span class="tt-label">Size</span>
-          <div class="dial" id="dSize" style="min-width:60px"><span class="dk">Size</span><span class="dv" id="sizeVal">100%</span></div>
-          <span class="tt-label" style="margin-top:10px">Letter spacing</span>
-          <div class="dial" id="dTrack" style="min-width:60px"><span class="dk">&#8596; Spacing</span><span class="dv" id="trackVal">0</span></div>
-          <span class="tt-label" style="margin-top:10px">Row spacing</span>
-          <div class="dial" id="dRowGap" style="min-width:60px"><span class="dk">&#8597; Rows</span><span class="dv" id="rowGapVal">4</span></div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div>
+              <span class="tt-label">Letter spacing</span>
+              <div class="dial" id="dTrack" style="min-width:60px"><span class="dk">&#8596; Spacing</span><span class="dv" id="trackVal">0</span></div>
+              <span class="tt-label" style="margin-top:10px">Row spacing</span>
+              <div class="dial" id="dRowGap" style="min-width:60px"><span class="dk">&#8597; Rows</span><span class="dv" id="rowGapVal">4</span></div>
+            </div>
+            <div>
+              <span class="tt-label">Size</span>
+              <div class="dial" id="dSize" style="min-width:60px"><span class="dk">Size</span><span class="dv" id="sizeVal">100%</span></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin:-4px 0 2px;cursor:pointer"><input type="checkbox" id="fitToggle" checked>Fit each row to width</label>
-      <p class="hint" style="margin:0 0 14px">Off: each word keeps its own size — the row just gets wider.</p>
 
         <label style="margin:12px 0 6px">Letter case</label>
         <div id="caseToggle" class="segmented" style="margin-bottom:4px">
@@ -629,33 +648,19 @@
         </div>
       </div>
       <div id="fxBlocks" style="display:none">
-        <label id="fxBlocksOnRow" style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:10px"><input type="checkbox" id="fxBlocksOn">Text blocks</label>
+        <label id="fxBlocksOnRow" style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:10px"><input type="checkbox" id="fxBlocksOn">Text background</label>
         <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
           <div class="tt-block" style="flex:1 1 200px;min-width:0">
-            <span class="tt-label">Block color</span>
+            <span class="tt-label">Background color</span>
             <div id="fxBlockSw" class="swatchpick"></div>
           </div>
           <div class="tt-block" style="flex:0 0 auto">
-            <span class="tt-label">Block opacity</span>
+            <span class="tt-label">Background opacity</span>
             <div class="dial" id="dBlockOp" style="min-width:88px"><span class="dk">Opacity</span><span class="dv" id="blockOpVal">100%</span></div>
           </div>
         </div>
       </div>
       <div id="fxCustom" style="display:none">
-        <div class="hlwrap">
-          <span class="tt-label">Text gradient</span>
-          <button type="button" id="txGradTog" class="gradtog">+ Gradient</button>
-          <div id="txGradPanel" class="gradpanel" style="display:none">
-            <span class="tt-label" style="display:block;margin-bottom:8px">Text gradient</span>
-            <div class="gmode"><button type="button" id="txGmode1" class="gm1 sel">Color 1</button><button type="button" id="txGmode2" class="gm2">Color 2</button></div>
-            <div class="texttools" style="margin-top:10px">
-              <div class="tt-block"><span class="tt-label">Angle</span><div class="dial" id="dTxAngle" style="min-width:76px"><span class="dk">Angle</span><span class="dv" id="txAngleVal">90&deg;</span></div></div>
-              <div class="tt-block"><span class="tt-label">Blend</span><div class="dial" id="dTxMid" style="min-width:76px"><span class="dk">Blend</span><span class="dv" id="txMidVal">50%</span></div></div>
-              <div class="tt-block"><span class="tt-label">Spread</span><label class="gwhole"><input type="checkbox" id="txWhole"> Whole text</label></div>
-            </div>
-            <p class="hint" style="margin:8px 0 0">Pick the two colors from the swatches above &mdash; <b style="color:#ff453a">red ring</b> = color 1, <b style="color:#0a84ff">blue ring</b> = color 2.</p>
-          </div>
-        </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:12px 0 6px"><input type="checkbox" id="fxOutlineOn">Text outline</label>
         <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
           <div class="tt-block" style="flex:1 1 190px;min-width:0"><span class="tt-label">Outline color</span><div id="fxOutlineSw" class="swatchpick"></div></div>
@@ -813,7 +818,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v2.9</div>
+    <div class="foot">Magic Marquee · v3.0</div>
   </div>
 
   <script>
@@ -2010,7 +2015,7 @@
       var opts = { W: W, H: H, targetW: W * 0.64 * textScale, maxFont: 170 * textScale, minFont: 34 * textScale, padX: 0, padY: 4, lineGap: rowGap, margin: 56, anchor: thumbPos };
       var src = overlayLines;
       if (customCase !== 'none') {
-        src = overlayLines.map(function (ln) { return ln.map(function (wd) { return { t: caseT(wd.t), s: wd.s, b: wd.b }; }); });
+        src = overlayLines.map(function (ln) { return ln.map(function (wd) { var o = {}; for (var _k in wd) o[_k] = wd[_k]; o.t = caseT(wd.t); return o; }); });
       }
       var blocks = layoutOverlay(function (s, fs) { return measureLine(ctx, s, fs); }, src, opts);
       if (styleFx.blocks.on) {
