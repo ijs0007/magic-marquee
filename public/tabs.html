@@ -904,6 +904,16 @@
 
       <button id="setThumbBtn" disabled>Set as YouTube thumbnail</button>
       <button id="downloadThumbBtn" class="secondary" style="margin-top:8px">Download thumbnail</button>
+      <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:16px;padding-top:12px">
+        <span class="tt-label" style="display:block;margin:0 0 4px">Save thumbnail</span>
+        <div class="hint" style="margin:0 0 8px">Saves the whole setup — photo, headline, and every adjustment — so you can reopen and keep editing.</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="thumbSaveName" type="text" placeholder="Name this thumbnail" maxlength="60" style="flex:1;min-width:0;margin:0;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit">
+          <button type="button" id="thumbSaveBtn" style="flex:0 0 auto;width:auto;padding:9px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.08);color:#fff;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap">Save</button>
+        </div>
+        <div id="thumbSavedMsg" class="hint" style="margin:0 0 8px;display:none"></div>
+        <div id="thumbSavedList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
         </div>
       </div>
     </div>
@@ -982,7 +992,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.18</div>
+    <div class="foot">Magic Marquee · v3.19</div>
   </div>
 
   <script>
@@ -3787,6 +3797,44 @@
     }
     function loadTpls() { try { var a = JSON.parse(localStorage.getItem(TPL_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
     function saveTpls(a) { try { localStorage.setItem(TPL_KEY, JSON.stringify(a.slice(0, TPL_MAX))); } catch (e) {} }
+    function captureThumb() {
+      var d = captureCustom();
+      d.overlayLines = JSON.parse(JSON.stringify(overlayLines || []));
+      d.rowGap = rowGap;
+      d.bgScale = bgScale; d.bgOffsetX = bgOffsetX; d.bgOffsetY = bgOffsetY;
+      d.bgEdge = bgEdge; d.bgEdgeH = bgEdgeH; d.bgBlend = bgBlend;
+      d.trim = { l: trim.l, r: trim.r, t: trim.t, b: trim.b };
+      d.grade = { sat: grade.sat, contrast: grade.contrast, bright: grade.bright, sharp: grade.sharp };
+      d.overlayHidden = overlayHidden; d.badgeHidden = badgeHidden;
+      return d;
+    }
+    function restoreThumb(d) {
+      if (!d) return;
+      setCustomState(d);
+      if (Array.isArray(d.overlayLines)) overlayLines = JSON.parse(JSON.stringify(d.overlayLines));
+      rowGap = (d.rowGap != null) ? d.rowGap : 4;
+      bgScale = (d.bgScale != null) ? d.bgScale : 1;
+      bgOffsetX = (d.bgOffsetX != null) ? d.bgOffsetX : 0;
+      bgOffsetY = (d.bgOffsetY != null) ? d.bgOffsetY : 0;
+      bgEdge = (d.bgEdge != null) ? d.bgEdge : 0;
+      bgEdgeH = (d.bgEdgeH != null) ? d.bgEdgeH : 0;
+      bgBlend = (d.bgBlend != null) ? d.bgBlend : 0.3;
+      trim = d.trim ? { l: d.trim.l || 0, r: d.trim.r || 0, t: d.trim.t || 0, b: d.trim.b || 0 } : { l: 0, r: 0, t: 0, b: 0 };
+      grade = d.grade ? { sat: (d.grade.sat != null ? d.grade.sat : 1), contrast: (d.grade.contrast != null ? d.grade.contrast : 1), bright: (d.grade.bright != null ? d.grade.bright : 1), sharp: (d.grade.sharp != null ? d.grade.sharp : 0) } : { sat: 1, contrast: 1, bright: 1, sharp: 0 };
+      overlayHidden = !!d.overlayHidden; badgeHidden = !!d.badgeHidden;
+    }
+    function refreshPhotoUI() {
+      setDV('dZoom', bgScale.toFixed(1) + '×');
+      var zv = document.getElementById('zoomVal'); if (zv) zv.textContent = bgScale.toFixed(1) + '×';
+      setDV('dPosX', posFmt(bgOffsetX / 6.4));
+      setDV('dPosY', posFmt(bgOffsetY / 3.6));
+      setDV('dEdge', Math.round(bgEdge * 100) + '%');
+      setDV('dEdgeH', Math.round(bgEdgeH * 100) + '%');
+      setDV('dBlend', Math.round(bgBlend * 100) + '%');
+      setDV('dTrimL', trimFmt(trim.l)); setDV('dTrimR', trimFmt(trim.r)); setDV('dTrimT', trimFmt(trim.t)); setDV('dTrimB', trimFmt(trim.b));
+      setDV('dSat', pct(grade.sat)); setDV('dCon', pct(grade.contrast)); setDV('dBri', pct(grade.bright)); setDV('dSha', pct(grade.sharp));
+      setDV('dRowGap', '' + Math.round(rowGap));
+    }
     function captureCustom() {
       var sc = styleFx.custom || { on: false, strength: 1, color: '#000000' };
       return {
@@ -4266,6 +4314,70 @@
         if (logoImgReady) { if (logoImgKey) payload.imgKey = logoImgKey; else if (typeof logoImg.src === 'string' && logoImg.src.indexOf('data:') === 0) payload.image = logoImg.src; }
         saveB.disabled = true; var orig = saveB.textContent; saveB.textContent = 'Saving…';
         fetch('/api/logos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) { saveB.disabled = false; saveB.textContent = orig; if (!res.ok) { flash((res.d && res.d.error) || 'Save failed.', false); return; } if (nameI) nameI.value = ''; flash('Saved.', true); setTimeout(function () { if (msg) msg.style.display = 'none'; }, 1800); load(); })
+          .catch(function () { saveB.disabled = false; saveB.textContent = orig; flash('Save failed.', false); });
+      });
+      load();
+    })();
+
+    (function () {
+      var nameI = document.getElementById('thumbSaveName');
+      var saveB = document.getElementById('thumbSaveBtn');
+      var msg = document.getElementById('thumbSavedMsg');
+      var list = document.getElementById('thumbSavedList');
+      if (!list) return;
+      function flash(t, ok) { if (!msg) return; msg.textContent = t; msg.style.display = 'block'; msg.style.color = ok ? 'var(--text-soft)' : '#ff8a8a'; }
+      function captureBg() {
+        if (!thumbFrameImg || !thumbFrameImg.naturalWidth) return null;
+        try { var c = document.createElement('canvas'); c.width = thumbFrameImg.naturalWidth; c.height = thumbFrameImg.naturalHeight; c.getContext('2d').drawImage(thumbFrameImg, 0, 0); return c.toDataURL('image/jpeg', 0.92); } catch (e) { return null; }
+      }
+      function captureLogoImg() {
+        if (!logoImgReady || !logoImg || !logoImg.naturalWidth) return null;
+        try { var c = document.createElement('canvas'); c.width = logoImg.naturalWidth; c.height = logoImg.naturalHeight; c.getContext('2d').drawImage(logoImg, 0, 0); return c.toDataURL('image/png'); } catch (e) { return null; }
+      }
+      function syncHideButtons() {
+        var tb = document.getElementById('toggleTextBtn');
+        if (tb) { tb.classList.toggle('off', overlayHidden); tb.title = overlayHidden ? 'Show text' : 'Hide text'; tb.setAttribute('aria-label', overlayHidden ? 'Show text' : 'Hide text'); }
+        var lh = document.getElementById('logoHide');
+        if (lh) { lh.style.background = badgeHidden ? 'var(--accent)' : 'var(--surface)'; lh.style.color = badgeHidden ? '#fff' : 'var(--text-soft)'; lh.style.borderColor = badgeHidden ? 'var(--accent)' : 'rgba(255,255,255,.2)'; }
+      }
+      function applyThumb(item) {
+        restoreThumb(item.data || {});
+        var ov = document.getElementById('overlayText'); if (ov) ov.value = overlayLinesToText(overlayLines);
+        var clrB = document.getElementById('logoImgClear'), fitR = document.getElementById('logoFitRow');
+        if (item.logoUrl) { logoImgKey = null; logoImg.src = item.logoUrl; if (clrB) clrB.style.display = ''; if (fitR) fitR.style.display = ''; }
+        else { logoImgReady = false; logoImgKey = null; try { logoImg.removeAttribute('src'); } catch (e) {} if (clrB) clrB.style.display = 'none'; if (fitR) fitR.style.display = 'none'; }
+        if (typeof refreshCustomUI === 'function') refreshCustomUI();
+        if (typeof refreshPhotoUI === 'function') refreshPhotoUI();
+        if (typeof renderChips === 'function') renderChips();
+        syncHideButtons();
+        if (item.photoUrl) {
+          var im = new Image();
+          im.onload = function () { thumbFrameImg = im; originalImg = im; showOriginal = false; if (typeof syncCompareBtn === 'function') syncCompareBtn(); rebuildGrade(true); drawThumb(); };
+          im.onerror = function () { drawThumb(); };
+          im.src = item.photoUrl;
+        } else { drawThumb(); }
+      }
+      function render(items) {
+        list.innerHTML = '';
+        if (!items || !items.length) { var em = document.createElement('div'); em.className = 'hint'; em.style.margin = '0'; em.textContent = 'No saved thumbnails yet.'; list.appendChild(em); return; }
+        items.forEach(function (it) {
+          var row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px';
+          var b = document.createElement('button'); b.type = 'button'; b.textContent = it.name || 'Thumbnail';
+          b.style.cssText = 'flex:1;min-width:0;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#fff;font-size:14px;font-weight:600;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+          b.addEventListener('click', function () { applyThumb(it); });
+          var del = document.createElement('button'); del.type = 'button'; del.setAttribute('aria-label', 'Delete'); del.textContent = '×';
+          del.style.cssText = 'flex:0 0 auto;width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:var(--text-soft);font-size:18px;line-height:1;cursor:pointer';
+          del.addEventListener('click', function () { del.disabled = true; fetch('/api/thumbs/' + it.id, { method: 'DELETE' }).then(function (r) { return r.json(); }).then(function () { load(); }).catch(function () { del.disabled = false; }); });
+          row.appendChild(b); row.appendChild(del); list.appendChild(row);
+        });
+      }
+      function load() { fetch('/api/thumbs').then(function (r) { return r.json(); }).then(function (d) { render(d && d.thumbs ? d.thumbs : []); }).catch(function () {}); }
+      if (saveB) saveB.addEventListener('click', function () {
+        var payload = { name: (nameI && nameI.value) || 'Thumbnail', state: captureThumb(), photo: captureBg(), logoImage: captureLogoImg() };
+        saveB.disabled = true; var orig = saveB.textContent; saveB.textContent = 'Saving…';
+        fetch('/api/thumbs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
           .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
           .then(function (res) { saveB.disabled = false; saveB.textContent = orig; if (!res.ok) { flash((res.d && res.d.error) || 'Save failed.', false); return; } if (nameI) nameI.value = ''; flash('Saved.', true); setTimeout(function () { if (msg) msg.style.display = 'none'; }, 1800); load(); })
           .catch(function () { saveB.disabled = false; saveB.textContent = orig; flash('Save failed.', false); });

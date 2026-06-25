@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.36";
+const APP_VERSION = "0.37";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -360,6 +360,20 @@ async function initDb() {
       data JSONB NOT NULL DEFAULT '{}'::jsonb,
       img_key TEXT,
       img_type TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS yt_thumbs (
+      id BIGSERIAL PRIMARY KEY,
+      owner_id TEXT NOT NULL DEFAULT 'me',
+      name TEXT NOT NULL DEFAULT 'Thumbnail',
+      data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      photo_key TEXT,
+      photo_type TEXT,
+      logo_key TEXT,
+      logo_type TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
@@ -1229,6 +1243,99 @@ app.delete("/api/logos/:id", async (req, res) => {
     const { rows } = await pool.query(`DELETE FROM yt_logos WHERE id = $1 AND owner_id = $2 RETURNING img_key`, [id, LOGO_OWNER]);
     const key = rows[0] && rows[0].img_key;
     if (key && r2Configured) { try { await s3.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key })); } catch (e) {} }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// --- Saved thumbnails (Save Thumbnail = re-editable setup). The full editor
+// state lives in Postgres (yt_thumbs.data); the current background photo (and
+// any uploaded logo image) live in R2 and are served back through this same
+// origin so re-drawing them on the canvas never taints the export. ---
+async function storeImageDataUrl(prefix, dataUrl, maxBytes) {
+  if (typeof dataUrl !== "string" || dataUrl.indexOf("data:") !== 0) return null;
+  if (!r2Configured) throw new Error("Image storage not configured (set R2_* env vars).");
+  const comma = dataUrl.indexOf(",");
+  const type = dataUrl.slice(5, dataUrl.indexOf(";")) || "image/jpeg";
+  const buf = Buffer.from(dataUrl.slice(comma + 1), "base64");
+  if (buf.length > (maxBytes || 8 * 1024 * 1024)) throw new Error("Image is too large.");
+  const key = `${prefix}/${LOGO_OWNER}/${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  await s3.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, Body: buf, ContentType: type }));
+  return { key, type };
+}
+function thumbAssetUrl(row, which) {
+  const k = which === "logo" ? (row && row.logo_key) : (row && row.photo_key);
+  return k ? ("/api/thumbs/" + row.id + "/" + which) : null;
+}
+
+app.get("/api/thumbs", async (req, res) => {
+  if (!dbConfigured) return res.json({ thumbs: [], persisted: false });
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, data, photo_key, logo_key FROM yt_thumbs WHERE owner_id = $1 ORDER BY updated_at DESC, id DESC LIMIT 60`,
+      [LOGO_OWNER]
+    );
+    const thumbs = rows.map((r) => ({ id: r.id, name: r.name, data: r.data || {}, photoUrl: thumbAssetUrl(r, "photo"), logoUrl: thumbAssetUrl(r, "logo") }));
+    res.json({ thumbs, persisted: true });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+app.post("/api/thumbs", async (req, res) => {
+  if (!dbConfigured) return res.status(500).json({ error: "Can't save — set DATABASE_URL in Render to turn on saving." });
+  const { name, state, photo, logoImage } = req.body || {};
+  const nm = (String(name || "Thumbnail").trim().slice(0, 80)) || "Thumbnail";
+  const data = (state && typeof state === "object") ? state : {};
+  try {
+    const p = photo ? await storeImageDataUrl("thumbs", photo, 8 * 1024 * 1024) : null;
+    const l = logoImage ? await storeImageDataUrl("thumblogos", logoImage, 4 * 1024 * 1024) : null;
+    const { rows } = await pool.query(
+      `INSERT INTO yt_thumbs (owner_id, name, data, photo_key, photo_type, logo_key, logo_type)
+       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)
+       RETURNING id, name, data, photo_key, logo_key`,
+      [LOGO_OWNER, nm, JSON.stringify(data), p && p.key, p && p.type, l && l.key, l && l.type]
+    );
+    const r = rows[0];
+    res.json({ id: r.id, name: r.name, data: r.data || {}, photoUrl: thumbAssetUrl(r, "photo"), logoUrl: thumbAssetUrl(r, "logo") });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || String(err) });
+  }
+});
+
+// Same-origin asset proxy: stream a saved thumbnail's photo or logo out of R2.
+app.get("/api/thumbs/:id/:which", async (req, res) => {
+  if (!dbConfigured || !r2Configured) return res.status(404).end();
+  const id = parseInt(req.params.id, 10);
+  const which = req.params.which === "logo" ? "logo" : (req.params.which === "photo" ? "photo" : null);
+  if (!Number.isFinite(id) || !which) return res.status(400).end();
+  try {
+    const { rows } = await pool.query(`SELECT photo_key, photo_type, logo_key, logo_type FROM yt_thumbs WHERE id = $1 AND owner_id = $2`, [id, LOGO_OWNER]);
+    const row = rows[0];
+    const key = row && (which === "logo" ? row.logo_key : row.photo_key);
+    const type = row && (which === "logo" ? row.logo_type : row.photo_type);
+    if (!key) return res.status(404).end();
+    const obj = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    res.setHeader("Content-Type", type || "image/jpeg");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    obj.Body.on("error", () => { try { res.destroy(); } catch (e) {} });
+    obj.Body.pipe(res);
+  } catch (err) {
+    if (!res.headersSent) res.status(500).end();
+  }
+});
+
+app.delete("/api/thumbs/:id", async (req, res) => {
+  if (!dbConfigured) return res.status(500).json({ error: "Database not configured." });
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Bad id." });
+  try {
+    const { rows } = await pool.query(`DELETE FROM yt_thumbs WHERE id = $1 AND owner_id = $2 RETURNING photo_key, logo_key`, [id, LOGO_OWNER]);
+    const row = rows[0];
+    if (row && r2Configured) {
+      for (const k of [row.photo_key, row.logo_key]) { if (k) { try { await s3.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: k })); } catch (e) {} } }
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err?.message || String(err) });
