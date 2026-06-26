@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.38";
+const APP_VERSION = "0.39";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -76,6 +76,67 @@ const imageConfigured = Boolean(OPENAI_API_KEY);
 const MSM_BASE_URL = (function () { let u = process.env.MSM_BASE_URL || ""; while (u.endsWith("/")) u = u.slice(0, -1); return u; })();
 const MSM_EXPORT_KEY = process.env.MSM_EXPORT_KEY || "";
 const msmConfigured = Boolean(MSM_BASE_URL && MSM_EXPORT_KEY);
+
+// ===================== Magic Suite SSO (Phase 3) =====================
+// Marquee now lives at marquee.isaiahsmithfilms.com and trusts Magic Story
+// Maker as the identity owner. MSM signs an `msm_auth` cookie scoped to the
+// parent domain (.isaiahsmithfilms.com) with the shared SESSION_SECRET, so it
+// rides along to this subdomain automatically. We verify it with the SAME
+// secret and scheme MSM/Reel use; a valid, unexpired, non-guest token means the
+// owner is logged in. This is Marquee's first auth gate — before it, anyone with
+// the URL could use the app, so this also closes that hole.
+//   - SESSION_SECRET unset (e.g. local dev) => gate OFF, no lockout.
+//   - /oauth2callback stays public so Google's redirect always lands.
+//   - page loads => redirect to MSM login; API calls => 401 JSON.
+// (regexes use [+] [/] char-classes, not backslashes, to survive .gitattributes.)
+const SESSION_SECRET = process.env.SESSION_SECRET || "";
+const MSM_AUTH_COOKIE = "msm_auth";
+const MSM_LOGIN_URL = (MSM_BASE_URL || "https://app.isaiahsmithfilms.com") + "/login";
+function parseCookies(req) {
+  const out = {};
+  const h = req.headers.cookie;
+  if (!h) return out;
+  h.split(";").forEach((part) => {
+    const i = part.indexOf("=");
+    if (i > -1) out[part.slice(0, i).trim()] = part.slice(i + 1).trim();
+  });
+  return out;
+}
+function b64urlMsm(buf) {
+  return Buffer.from(buf).toString("base64").replace(/[+]/g, "-").replace(/[/]/g, "_").replace(/=+$/, "");
+}
+function validMsmToken(tok) {
+  if (!SESSION_SECRET || !tok || tok.indexOf(".") === -1) return null;
+  const parts = tok.split(".");
+  const expected = b64urlMsm(crypto.createHmac("sha256", SESSION_SECRET).update(parts[0]).digest());
+  const a = Buffer.from(parts[1]);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[0].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
+    return payload.exp > Date.now() ? payload : null;
+  } catch (e) {
+    return null;
+  }
+}
+// True when a valid MSM session cookie for the OWNER (admin, not a guest) is present.
+function msmAuthed(req) {
+  const payload = validMsmToken(parseCookies(req)[MSM_AUTH_COOKIE]);
+  return !!payload && payload.role !== "guest";
+}
+// Public paths that must work without a login: Google's OAuth return + status.
+function isPublicSuitePath(pth) {
+  return pth === "/oauth2callback" || pth === "/api/status";
+}
+function suiteAuthGate(req, res, next) {
+  if (!SESSION_SECRET) return next();              // SSO not configured -> don't lock anyone out
+  if (isPublicSuitePath(req.path)) return next();
+  if (msmAuthed(req)) return next();
+  const wantsHtml = req.method === "GET" && String(req.headers.accept || "").indexOf("text/html") !== -1;
+  if (wantsHtml) return res.redirect(MSM_LOGIN_URL);
+  return res.status(401).json({ error: "Not signed in. Log in at " + MSM_LOGIN_URL });
+}
+// ===================================================================
 
 const BASE_URL = (
   process.env.BASE_URL ||
@@ -763,6 +824,7 @@ async function runFrameExtraction(jobId, key, round) {
 }
 
 const app = express();
+app.use(suiteAuthGate); // Magic Suite SSO — verify MSM's shared login before any route or body parsing
 app.use(express.json({ limit: "12mb" })); // base64 thumbnail images can be a few MB
 
 app.get("/", (req, res) => {
