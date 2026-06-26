@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.37";
+const APP_VERSION = "0.38";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -770,7 +770,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/tabs.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "tabs.html"));
+  res.redirect("/"); // studio moved to the main page; keep old links/bookmarks working
 });
 
 app.get("/api/status", (req, res) => {
