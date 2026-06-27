@@ -42,3 +42,29 @@ Top-right now = **switcher + ☰** only. On phones (≤560px) the switcher + ☰
 - Tag-balance (a/span/nav/div/button) all balanced ✅
 - ⚠️ Couldn't run a live browser this session (Chrome extension not connected). **Please device-test** on desktop + iPhone Safari portrait: open ☰, confirm Help panel, Accent swatches, and Dark/Light all still work from the menu, the switcher still hops to all four apps, top-right shows only switcher + ☰, and Log out reads grayed/un-clickable.
 - No deploy — yours to push.
+
+---
+
+## Unified header + logo badge task (2026-06-27) — Marquee. v3.24 → v3.25.
+
+Applied the **same canonical header** as the other apps (`public/index.html`):
+- **Part 1:** converted the old `.hrow`/`.hbtns` one-row header into the canonical `<header>` —
+  two rows (badge + `Magic Marquee` wordmark; then the switcher), full-width divider underneath
+  (Marquee was **missing** the divider — now added). Hamburger pinned top-right (absolute). The
+  hidden proxy buttons + `#fastMenu` stay as header children; `#accentPop`/`#helpPanel` still
+  render below the header in normal flow (unchanged).
+- **Part 2:** boxed logo badge — `.brand-badge` (30×30, 1.5px blue border, dark fill) with an
+  inline-SVG **play triangle** in the accent color. Wordmark unified to 27px (blue gradient kept).
+- **Part 3:** mobile (≤560px) centers brand + switcher; hamburger stays top-right.
+- **Part 5:** the ☰ Dark/Light item now flips in place and **keeps the menu open**. ⚠️ Subtlety:
+  Marquee uses the *proxy* pattern (the menu item `.click()`s the hidden real `#themeToggle`), and
+  that synthetic click bubbles to the close-on-outside-click handler — so it would slam the menu
+  shut. Fix: re-open the menu immediately after the proxied click (synchronous, no flicker). (Same
+  fix applied to MSM, which is also proxy-based; Reel/Credits move the toggle *into* the menu so
+  they never had the problem.)
+- Part 4 N/A (Marquee is blue, already correct).
+
+**Validation:** both inline scripts `node --check`'d ✅; tags balanced ✅; no `.hrow`/`.hbtns`/
+`.star` leftovers. ⚠️ Couldn't run a live browser — please device-test on desktop + iPhone Safari
+portrait: badge renders, two-row + divider, mobile centered, ☰ → Help panel / Accent swatches /
+Dark-light (menu stays open) all work, switcher hops all four apps.

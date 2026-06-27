@@ -30,8 +30,11 @@
     .wrap { max-width:540px; margin:0 auto; }
     h1 { font-size:23px; font-weight:700; letter-spacing:-.02em; margin:0 0 3px; }
     .sub { color:var(--text-soft); margin:0 0 20px; font-size:14px; }
-    .hrow { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-    .hrow h1 { margin:0; }
+    /* ===== Suite header — same two-row structure as the other apps (Part 1): brand row
+       (badge + wordmark) then the switcher, full-width divider underneath; hamburger
+       pinned top-right. ===== */
+    header { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:7px; padding:16px 0 12px; margin-bottom:20px; border-bottom:1px solid var(--border); }
+    header h1 { margin:0; }
     .help { width:26px; height:26px; flex:none; padding:0; border-radius:50%; background:var(--border); color:var(--text-soft); font-weight:700; font-size:14px; line-height:1; }
     .help:hover { background:var(--chip); color:var(--text); }
     .helppanel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:16px; font-size:13px; line-height:1.55; color:var(--text-soft); }
@@ -208,30 +211,31 @@
     .btnrow > button.secondary { flex:1 1 auto; width:auto; }
   
     /* ---- Magic Marquee brand + theme/accent controls (ported from MSM) ---- */
-    .brand { display:flex; align-items:center; gap:9px; font-family:"Poppins","Segoe UI",-apple-system,sans-serif; font-weight:700; font-size:21px; letter-spacing:-.01em; }
-    .brand .star { font-size:18px; color:var(--title-g2, var(--accent)); }
+    .brand { display:flex; align-items:center; gap:11px; font-family:"Poppins","Segoe UI",-apple-system,sans-serif; font-weight:700; font-size:27px; letter-spacing:-.01em; }
+    /* Part 2: boxed logo badge — rounded square, accent border + accent glyph, subtle dark fill. */
+    .brand-badge { flex:none; width:30px; height:30px; border-radius:8px; border:1.5px solid var(--accent); background:rgba(0,0,0,0.22); color:var(--accent); display:inline-flex; align-items:center; justify-content:center; }
+    .brand-badge svg { width:17px; height:17px; display:block; }
     .brand .wm { background:linear-gradient(92deg, var(--title-g1,#5fa0ff), var(--title-g2,#2f80ff) 55%, var(--title-g3,#4fc3f7)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-    .hbtns { display:flex; align-items:center; gap:7px; }
     .theme-toggle { width:auto; flex:none; font-size:15px; line-height:1; padding:7px 10px; border-radius:9px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; transition:background .15s; }
     .theme-toggle:hover { background:var(--chip); }
-    /* Fast menu (hamburger): top-right shows only the switcher + this; Help / Accent /
-       Dark-light / (disabled) Log out live inside it. The real buttons stay in the DOM
-       (display:none) so the menu items' proxy .click() still fires. Themed with Marquee vars. */
-    .hbtns > #helpBtn, .hbtns > #accentBtn, .hbtns > #themeToggle { display:none; }
-    .menu-btn { width:auto; flex:none; font-size:17px; line-height:1; padding:7px 11px; border-radius:9px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; transition:background .15s; }
+    /* The real header controls stay (hidden) in the DOM so the ☰ menu's proxy .click() still fires. */
+    header > #helpBtn, header > #accentBtn, header > #themeToggle { display:none; }
+    /* Fast menu (hamburger), pinned top-right; holds Help / Accent / Dark-light / disabled Log out. */
+    .menu-btn { position:absolute; top:14px; right:0; z-index:81; width:auto; flex:none; font-size:17px; line-height:1; padding:7px 11px; border-radius:9px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; transition:background .15s; }
     .menu-btn:hover { background:var(--chip); }
-    .hbtns { position:relative; }
-    .fast-menu { position:absolute; top:calc(100% + 8px); right:0; z-index:80; min-width:200px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:7px; box-shadow:0 12px 34px rgba(0,0,0,.32); display:flex; flex-direction:column; gap:1px; }
+    .fast-menu { position:absolute; top:52px; right:0; z-index:80; min-width:200px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:7px; box-shadow:0 12px 34px rgba(0,0,0,.32); display:flex; flex-direction:column; gap:1px; }
     .fast-menu[hidden] { display:none; }
     .fast-menu .fm-item { font-family:inherit; font-size:14px; text-align:left; background:transparent; border:none; border-radius:8px; color:var(--text); cursor:pointer; padding:11px; }
     .fast-menu .fm-item:hover { background:var(--chip); }
     .fast-menu .fm-item.fm-disabled { color:var(--text-soft); opacity:.5; cursor:not-allowed; }
     .fast-menu .fm-item.fm-disabled:hover { background:transparent; }
+    /* Part 3: mobile centers the brand + switcher; hamburger stays pinned top-right. */
     @media (max-width:560px){
-      .hrow { flex-wrap:wrap; gap:8px; }
-      .hbtns { width:100%; justify-content:space-between; }
+      header { gap:6px; align-items:center; }
+      .brand { font-size:20px; gap:9px; justify-content:center; }
+      .msuite-switch { justify-content:center; width:100%; }
     }
-    .msuite-switch{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-family:inherit}
+    .msuite-switch{display:inline-flex;align-items:center;gap:9px;font-size:14px;font-family:inherit}
     .msuite-switch a{color:var(--text-soft);text-decoration:none;white-space:nowrap}
     .msuite-switch a:hover{color:var(--text)}
     .msuite-switch a.msuite-on{color:var(--accent);font-weight:600;cursor:default}
@@ -361,30 +365,28 @@
 <body>
   <script>try{if(localStorage.getItem("mp_theme")!=="light")document.body.classList.add("dark");}catch(e){}</script>
   <div class="wrap">
-    <div class="hrow">
-      <div class="brand"><span class="star">✦</span><span class="wm">Magic Marquee</span></div>
-      <div class="hbtns">
-        <nav class="msuite-switch" aria-label="Switch app">
-          <a href="https://app.isaiahsmithfilms.com" data-app="msm">Story Maker</a>
-          <span class="msuite-dot" aria-hidden="true">·</span>
-          <a href="https://reels.isaiahsmithfilms.com/studio" data-app="reel">Reel</a>
-          <span class="msuite-dot" aria-hidden="true">·</span>
-          <a href="https://marquee.isaiahsmithfilms.com" data-app="marquee">Marquee</a>
-          <span class="msuite-dot" aria-hidden="true">·</span>
-          <a href="https://credits.isaiahsmithfilms.com" data-app="credits">Credits</a>
-        </nav>
-        <button id="helpBtn" class="theme-toggle" type="button" title="How it works" aria-label="How it works">?</button>
-        <button id="accentBtn" class="theme-toggle" type="button" title="Accent color" aria-label="Accent color">🎨</button>
-        <button id="themeToggle" class="theme-toggle" type="button" title="Light / dark" aria-label="Toggle theme">🌙</button>
-        <button class="menu-btn" id="menuBtn" type="button" title="Menu" aria-label="Menu" aria-haspopup="true" aria-expanded="false">☰</button>
-        <div class="fast-menu" id="fastMenu" hidden>
-          <button class="fm-item" type="button" data-proxy="helpBtn">❔ How it works</button>
-          <button class="fm-item" type="button" data-proxy="accentBtn">🎨 Accent color</button>
-          <button class="fm-item" id="mpThemeItem" type="button" data-proxy="themeToggle">🌙 Dark mode</button>
-          <button class="fm-item fm-disabled" type="button" disabled aria-disabled="true" title="Log out isn’t wired up yet">↩ Log out</button>
-        </div>
+    <header>
+      <button class="menu-btn" id="menuBtn" type="button" title="Menu" aria-label="Menu" aria-haspopup="true" aria-expanded="false">☰</button>
+      <div class="brand"><span class="brand-badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="wm">Magic Marquee</span></div>
+      <nav class="msuite-switch" aria-label="Switch app">
+        <a href="https://app.isaiahsmithfilms.com" data-app="msm">Story Maker</a>
+        <span class="msuite-dot" aria-hidden="true">·</span>
+        <a href="https://reels.isaiahsmithfilms.com/studio" data-app="reel">Reel</a>
+        <span class="msuite-dot" aria-hidden="true">·</span>
+        <a href="https://marquee.isaiahsmithfilms.com" data-app="marquee">Marquee</a>
+        <span class="msuite-dot" aria-hidden="true">·</span>
+        <a href="https://credits.isaiahsmithfilms.com" data-app="credits">Credits</a>
+      </nav>
+      <button id="helpBtn" class="theme-toggle" type="button" title="How it works" aria-label="How it works">?</button>
+      <button id="accentBtn" class="theme-toggle" type="button" title="Accent color" aria-label="Accent color">🎨</button>
+      <button id="themeToggle" class="theme-toggle" type="button" title="Light / dark" aria-label="Toggle theme">🌙</button>
+      <div class="fast-menu" id="fastMenu" hidden>
+        <button class="fm-item" type="button" data-proxy="helpBtn">❔ How it works</button>
+        <button class="fm-item" type="button" data-proxy="accentBtn">🎨 Accent color</button>
+        <button class="fm-item" id="mpThemeItem" type="button" data-proxy="themeToggle">🌙 Dark mode</button>
+        <button class="fm-item fm-disabled" type="button" disabled aria-disabled="true" title="Log out isn’t wired up yet">↩ Log out</button>
       </div>
-    </div>
+    </header>
     <div id="accentPop" class="accent-pop" hidden></div>
     <div id="helpPanel" class="helppanel" style="display:none">
       Upload a finished film — it goes straight to cloud storage, then transfers to YouTube as a <b>private</b> draft. If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.
@@ -1030,7 +1032,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.24</div>
+    <div class="foot">Magic Marquee · v3.25</div>
   </div>
 
   <script>
@@ -1687,8 +1689,11 @@
         item.addEventListener('click', function(e){
           e.stopPropagation();
           var id = item.getAttribute('data-proxy');
-          closeMenu();
           var target = id && document.getElementById(id);
+          // Part 5: the theme toggle flips in place and KEEPS the menu open (all four apps).
+          // The proxied click bubbles to the close-on-outside-click handler, so re-open after.
+          if(item.id === 'mpThemeItem'){ if(target) target.click(); menu.hidden = false; btn.setAttribute('aria-expanded','true'); syncMenu(); return; }
+          closeMenu();
           if(target) target.click();
         });
       });
