@@ -827,6 +827,36 @@ const app = express();
 app.use(suiteAuthGate); // Magic Suite SSO — verify MSM's shared login before any route or body parsing
 app.use(express.json({ limit: "12mb" })); // base64 thumbnail images can be a few MB
 
+// ---------- In-app feedback (emails the team via Resend, like MSM) ----------
+// Needs RESEND_API_KEY + CALLSHEET_FROM in Render. FEEDBACK_TO routes it to a
+// specific inbox (else it goes to the FROM address). No-ops if not configured.
+function fbEsc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+async function sendFeedbackEmail(note, room){
+  const key = process.env.RESEND_API_KEY || "", from = process.env.CALLSHEET_FROM || "";
+  if (!key || !from) { console.warn("[feedback] skipped — Resend not configured (need RESEND_API_KEY + CALLSHEET_FROM)"); return { ok:false }; }
+  const ownerEmail = from.replace(/^.*<([^>]+)>.*$/, "$1");
+  const to = (process.env.FEEDBACK_TO || ownerEmail || "").trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) { console.warn("[feedback] skipped — no valid recipient; set FEEDBACK_TO"); return { ok:false }; }
+  const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1c;line-height:1.5;">' +
+    '<p><strong>New feedback</strong> from Magic Marquee.</p>' +
+    '<p style="color:#555;font-size:13px;">Room: <strong>' + fbEsc(room || "—") + '</strong></p>' +
+    '<div style="background:#eef4ff;border-left:3px solid #2f80ff;padding:12px 14px;border-radius:4px;white-space:pre-wrap;font-size:14px;">' + fbEsc(note) + '</div></div>';
+  try {
+    const r = await fetch("https://api.resend.com/emails", { method:"POST", headers:{ "Authorization":"Bearer " + key, "Content-Type":"application/json" }, body: JSON.stringify({ from, to: [to], subject: "Magic Marquee feedback — " + (room || "app"), html }) });
+    if (!r.ok) { console.warn("[feedback] rejected by Resend:", r.status); return { ok:false }; }
+    return { ok:true };
+  } catch(e){ console.warn("[feedback] send failed:", e && e.message); return { ok:false }; }
+}
+app.post("/api/feedback", async (req, res) => {
+  try {
+    const note = String((req.body && req.body.note) || "").trim().slice(0, 4000);
+    const room = String((req.body && req.body.room) || "").trim().slice(0, 80);
+    if (!note) return res.status(400).json({ ok:false, error:"Write a note first." });
+    const out = await sendFeedbackEmail(note, room);
+    res.json({ ok:true, emailed: !!(out && out.ok) });
+  } catch(e){ console.warn("[feedback] handler error:", e && e.message); res.status(500).json({ ok:false }); }
+});
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
