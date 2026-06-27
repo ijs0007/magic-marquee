@@ -33,7 +33,7 @@
     /* ===== Suite header — same two-row structure as the other apps (Part 1): brand row
        (badge + wordmark) then the switcher, full-width divider underneath; hamburger
        pinned top-right. ===== */
-    header { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:7px; padding:16px 0 12px; margin-bottom:20px; border-bottom:1px solid var(--border); }
+    header { position:relative; box-sizing:border-box; flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-start; gap:5px; margin:0 calc(50% - 50vw) 22px; padding:18px 22px 14px; border-bottom:1px solid var(--border); }
     header h1 { margin:0; }
     .help { width:26px; height:26px; flex:none; padding:0; border-radius:50%; background:var(--border); color:var(--text-soft); font-weight:700; font-size:14px; line-height:1; }
     .help:hover { background:var(--chip); color:var(--text); }
@@ -211,31 +211,31 @@
     .btnrow > button.secondary { flex:1 1 auto; width:auto; }
   
     /* ---- Magic Marquee brand + theme/accent controls (ported from MSM) ---- */
-    .brand { display:flex; align-items:center; gap:11px; font-family:"Poppins","Segoe UI",-apple-system,sans-serif; font-weight:700; font-size:27px; letter-spacing:-.01em; }
-    /* Part 2: boxed logo badge — rounded square, accent border + accent glyph, subtle dark fill. */
-    .brand-badge { flex:none; width:30px; height:30px; border-radius:8px; border:1.5px solid var(--accent); background:rgba(0,0,0,0.22); color:var(--accent); display:inline-flex; align-items:center; justify-content:center; }
-    .brand-badge svg { width:17px; height:17px; display:block; }
+    .brand { display:flex; align-items:center; font-family:"Poppins","Segoe UI",-apple-system,sans-serif; font-weight:700; font-size:26px; letter-spacing:-.01em; line-height:1.1; }
     .brand .wm { background:linear-gradient(92deg, var(--title-g1,#5fa0ff), var(--title-g2,#2f80ff) 55%, var(--title-g3,#4fc3f7)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .msuite-switch{display:flex;align-items:center;gap:9px;font-size:14px;font-family:inherit}
     .theme-toggle { width:auto; flex:none; font-size:15px; line-height:1; padding:7px 10px; border-radius:9px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; transition:background .15s; }
     .theme-toggle:hover { background:var(--chip); }
     /* The real header controls stay (hidden) in the DOM so the ☰ menu's proxy .click() still fires. */
     header > #helpBtn, header > #accentBtn, header > #themeToggle { display:none; }
-    /* Fast menu (hamburger), pinned top-right; holds Help / Accent / Dark-light / disabled Log out. */
-    .menu-btn { position:absolute; top:14px; right:0; z-index:81; width:auto; flex:none; font-size:17px; line-height:1; padding:7px 11px; border-radius:9px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; transition:background .15s; }
-    .menu-btn:hover { background:var(--chip); }
-    .fast-menu { position:absolute; top:52px; right:0; z-index:80; min-width:200px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:7px; box-shadow:0 12px 34px rgba(0,0,0,.32); display:flex; flex-direction:column; gap:1px; }
+    /* Hamburger — clean lines, no enclosure box, pinned top-right. */
+    .menu-btn { position:absolute; top:18px; right:22px; z-index:81; display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; padding:0; border:none; border-radius:9px; background:none; color:var(--text); cursor:pointer; }
+    .menu-btn:hover { color:var(--accent); background:none; }
+    .menu-btn svg { display:block; }
+    .fast-menu { position:absolute; top:56px; right:22px; z-index:80; min-width:200px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:7px; box-shadow:0 12px 34px rgba(0,0,0,.32); display:flex; flex-direction:column; gap:1px; }
     .fast-menu[hidden] { display:none; }
     .fast-menu .fm-item { font-family:inherit; font-size:14px; text-align:left; background:transparent; border:none; border-radius:8px; color:var(--text); cursor:pointer; padding:11px; }
     .fast-menu .fm-item:hover { background:var(--chip); }
     .fast-menu .fm-item.fm-disabled { color:var(--text-soft); opacity:.5; cursor:not-allowed; }
     .fast-menu .fm-item.fm-disabled:hover { background:transparent; }
-    /* Part 3: mobile centers the brand + switcher; hamburger stays pinned top-right. */
-    @media (max-width:560px){
-      header { gap:6px; align-items:center; }
-      .brand { font-size:20px; gap:9px; justify-content:center; }
+    /* Mobile (≤600px) — center the brand + switcher; line-hamburger stays top-right. */
+    @media (max-width:600px){
+      header { align-items:center; gap:5px; padding:15px 16px 12px; margin-bottom:16px; }
+      .brand { font-size:21px; }
       .msuite-switch { justify-content:center; width:100%; }
+      .menu-btn { top:13px; right:13px; width:32px; height:32px; }
+      .fast-menu { top:50px; right:13px; }
     }
-    .msuite-switch{display:inline-flex;align-items:center;gap:9px;font-size:14px;font-family:inherit}
     .msuite-switch a{color:var(--text-soft);text-decoration:none;white-space:nowrap}
     .msuite-switch a:hover{color:var(--text)}
     .msuite-switch a.msuite-on{color:var(--accent);font-weight:600;cursor:default}
@@ -366,8 +366,8 @@
   <script>try{if(localStorage.getItem("mp_theme")!=="light")document.body.classList.add("dark");}catch(e){}</script>
   <div class="wrap">
     <header>
-      <button class="menu-btn" id="menuBtn" type="button" title="Menu" aria-label="Menu" aria-haspopup="true" aria-expanded="false">☰</button>
-      <div class="brand"><span class="brand-badge" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="wm">Magic Marquee</span></div>
+      <button class="menu-btn" id="menuBtn" type="button" title="Menu" aria-label="Menu" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3.5" y1="7" x2="20.5" y2="7"/><line x1="3.5" y1="12" x2="20.5" y2="12"/><line x1="3.5" y1="17" x2="20.5" y2="17"/></svg></button>
+      <div class="brand"><span class="wm">Magic Marquee</span></div>
       <nav class="msuite-switch" aria-label="Switch app">
         <a href="https://app.isaiahsmithfilms.com" data-app="msm">Story Maker</a>
         <span class="msuite-dot" aria-hidden="true">·</span>
@@ -1032,7 +1032,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot">Magic Marquee · v3.25</div>
+    <div class="foot">Magic Marquee · v3.26</div>
   </div>
 
   <script>
