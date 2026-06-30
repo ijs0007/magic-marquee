@@ -12,6 +12,15 @@ exit). The timer is **not `unref`'d** so it deterministically forces exit(1). **
 `node --check` ✓; isolated harness proves exit(1) on fast (~35ms) and hung (~2.5s) paths; server boots,
 `/api/status` + normal requests succeed, logs clean.
 
+**Phase B — "How It Works" standardization (footer v3.34 → v3.35, APP_VERSION 0.42 → 0.43).** Converted the
+inline `#helpPanel` to match Credits' dismissible-card design: added a **`✕` close button** (`#helpPanelClose`)
+and a bold **`<h3>How It Works</h3>`** heading; the panel already used the token-driven `.helppanel` card so no
+restyle was needed (added `position:relative` for the close button). The **first paragraph now leads with
+"Magic Marquee uploads a finished film…"** (was "Upload a finished film…"). The **"Part of the Magic Suite"**
+block is kept. The hamburger item was relabeled **"❔ How it works" → "❔ How It Works"** (still proxies the
+header `#helpBtn`). Verified: `node --check` ✓, inline scripts parse ✓; booted and confirmed the heading, close
+button, Magic-Marquee-led first paragraph, hamburger item, Suite block, and footer v3.35 all render.
+
 ## Suite Bulletproofing, Fixes & Improvements (2026-06-30) — server v0.39 → v0.40, UI v3.29 → v3.30
 
 **Repo hygiene first:** Marquee had **no `.gitattributes`** while `core.autocrlf=true` (the regex-backslash

@@ -406,14 +406,16 @@
       <button id="accentBtn" class="theme-toggle" type="button" title="Accent color" aria-label="Accent color">🎨</button>
       <button id="themeToggle" class="theme-toggle" type="button" title="Light / dark" aria-label="Toggle theme">🌙</button>
       <div class="fast-menu" id="fastMenu" hidden>
-        <button class="fm-item" type="button" data-proxy="helpBtn">❔ How it works</button>
+        <button class="fm-item" type="button" data-proxy="helpBtn">❔ How It Works</button>
         <button class="fm-item" type="button" data-proxy="accentBtn">🎨 Accent color</button>
         <button class="fm-item fm-disabled" type="button" disabled aria-disabled="true" title="Log out isn’t wired up yet">↩ Log out</button>
       </div>
     </header>
     <div id="accentPop" class="accent-pop" hidden></div>
-    <div id="helpPanel" class="helppanel" style="display:none">
-      Upload a finished film — it goes straight to cloud storage, then transfers to YouTube as a <b>private</b> draft by default (change the visibility, category, tags &amp; more under <b>Upload options</b>). If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.
+    <div id="helpPanel" class="helppanel" style="display:none;position:relative">
+      <button type="button" id="helpPanelClose" aria-label="Close help" style="position:absolute;top:6px;right:10px;background:none;border:none;color:var(--text-soft);font-size:16px;cursor:pointer;line-height:1">&#10005;</button>
+      <h3 style="margin:0 0 8px;color:var(--text);font-size:16px">How It Works</h3>
+      <p style="margin:0 0 12px">Magic Marquee uploads a finished film straight to cloud storage, then transfers it to YouTube as a <b>private</b> draft by default (change the visibility, category, tags &amp; more under <b>Upload options</b>). If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.</p>
       <div style="margin-top:13px;padding-top:12px;border-top:1px solid var(--border)">
         <b>Part of the Magic Suite.</b> Marquee is one of four connected apps that share your login and project data:
         <b>Story Maker</b> (write the script, build cast &amp; crew) · <b>Reel</b> (share footage for selects) ·
@@ -1062,7 +1064,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.34</span></div>
+    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.35</span></div>
   </div>
 
   <script>
@@ -1706,6 +1708,7 @@
       var p = document.getElementById('helpPanel');
       p.style.display = (p.style.display === 'none') ? 'block' : 'none';
     });
+    (function(){ var c = document.getElementById('helpPanelClose'); if (c) c.addEventListener('click', function(){ var p = document.getElementById('helpPanel'); if (p) p.style.display = 'none'; }); })();
 
     /* ---------- Fast menu (header hamburger) ---------- */
     (function(){
