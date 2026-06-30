@@ -413,7 +413,7 @@
     </header>
     <div id="accentPop" class="accent-pop" hidden></div>
     <div id="helpPanel" class="helppanel" style="display:none">
-      Upload a finished film — it goes straight to cloud storage, then transfers to YouTube as a <b>private</b> draft. If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.
+      Upload a finished film — it goes straight to cloud storage, then transfers to YouTube as a <b>private</b> draft by default (change the visibility, category, tags &amp; more under <b>Upload options</b>). If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.
     </div>
 
     <div class="tabs">
@@ -1056,7 +1056,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.31</span></div>
+    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.32</span></div>
   </div>
 
   <script>
@@ -1640,13 +1640,20 @@
     }
 
     // R2 -> YouTube transfer + render the result card
+    // Read the live Upload Options (privacy, category, tags, license, language) so they
+    // ride along with the transfer. Defensive: any missing control just yields ''/default
+    // and the server falls back to the safe private/category-1 behavior.
+    function readUploadOpts() {
+      var g = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+      return { privacy: g('optPrivacy') || 'private', category: g('optCategory') || '1', tags: g('optTags') || '', license: g('optLicense') || 'youtube', lang: g('optLang') || '' };
+    }
     async function startTransfer(key) {
       prog2.classList.add('show'); p2wrap.classList.add('indet');
       p2bar.style.width = ''; p2pct.textContent = '';
       busy('Preparing transfer', null);
       const tr = await (await fetch('/api/transfer', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, title: titleInput.value || '', description: descInput.value || '' })
+        body: JSON.stringify(Object.assign({ key, title: titleInput.value || '', description: descInput.value || '' }, readUploadOpts()))
       })).json();
       if (!tr.jobId) throw new Error(tr.error || 'Could not start transfer');
       const job = await pollTransfer(tr.jobId);

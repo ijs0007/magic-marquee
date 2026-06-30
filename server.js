@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.40";
+const APP_VERSION = "0.41";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -458,7 +458,30 @@ async function refreshTemplateCache() {
 
 // Background transfer: stream the object from R2 straight into a YouTube
 // resumable upload. Bytes never sit on Render disk; memory stays flat.
-async function transferToYouTube(jobId, key, title, description) {
+// Allow-lists + sanitizer for the Upload Options (privacy, category, tags, license,
+// language). Everything falls back to today's hardcoded behavior (private draft,
+// category 1, no tags) when a field is missing/invalid — so an upload that doesn't
+// set options behaves EXACTLY as before. Only an explicit, valid choice changes anything.
+const ALLOWED_PRIVACY = new Set(["public", "unlisted", "private"]);
+const ALLOWED_LICENSE = new Set(["youtube", "creativeCommon"]);
+const ALLOWED_CATEGORY = new Set(["1", "2", "10", "15", "17", "19", "20", "22", "23", "24", "25", "26", "27", "28"]);
+function sanitizeUploadOpts(b) {
+  b = b || {};
+  const privacy = ALLOWED_PRIVACY.has(b.privacy) ? b.privacy : "private";
+  const license = ALLOWED_LICENSE.has(b.license) ? b.license : "youtube";
+  const category = ALLOWED_CATEGORY.has(String(b.category)) ? String(b.category) : "1";
+  const lang = (typeof b.lang === "string" && /^[a-zA-Z-]{2,10}$/.test(b.lang)) ? b.lang : "";
+  let tags = [];
+  if (typeof b.tags === "string" && b.tags.trim()) {
+    let total = 0;
+    tags = b.tags.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 30)
+      .filter((t) => { total += t.length + 1; return total <= 480; }); // YouTube caps total tag length
+  }
+  return { privacy, license, category, lang, tags };
+}
+
+async function transferToYouTube(jobId, key, title, description, opts) {
+  const o = sanitizeUploadOpts(opts);
   const job = jobs.get(jobId);
   try {
     job.state = "fetching";
@@ -478,11 +501,14 @@ async function transferToYouTube(jobId, key, title, description) {
     auth.setCredentials({ refresh_token: refreshToken });
     const youtube = google.youtube({ version: "v3", auth });
 
+    const snippet = { title, description, categoryId: o.category };
+    if (o.tags.length) snippet.tags = o.tags;
+    if (o.lang) { snippet.defaultLanguage = o.lang; snippet.defaultAudioLanguage = o.lang; }
     const result = await youtube.videos.insert({
       part: ["snippet", "status"],
       requestBody: {
-        snippet: { title, description, categoryId: "1" }, // 1 = Film & Animation
-        status: { privacyStatus: "private", selfDeclaredMadeForKids: false },
+        snippet,
+        status: { privacyStatus: o.privacy, license: o.license, selfDeclaredMadeForKids: false },
       },
       media: { body: counter },
     });
@@ -1136,13 +1162,18 @@ app.post("/api/transfer", (req, res) => {
   const { key, title, description } = req.body || {};
   if (!key) return res.status(400).json({ error: "Missing key." });
 
+  // Upload Options (privacy, category, tags, license, language) ride along from the
+  // Upload options tab. sanitizeUploadOpts() inside the worker validates them and
+  // falls back to the old private/category-1 defaults, so an unset/invalid option
+  // can never change the safe default behavior.
   const jobId = crypto.randomUUID();
   jobs.set(jobId, { state: "starting", key, bytesSent: 0, total: 0, createdAt: Date.now() });
   transferToYouTube(
     jobId,
     key,
     (title || "API upload").slice(0, 100),
-    description || "Uploaded via the YouTube Data API."
+    description || "Uploaded via the YouTube Data API.",
+    req.body || {}
   );
   res.json({ jobId });
 });

@@ -30,6 +30,39 @@ real server** (deps installed locally, lockfile not committed) — `/api/status`
 logged), `/api/msm/projects`(503 w/o bridge) all behave correctly. ⚠️ No live YouTube/R2 creds this session —
 spot-check a real upload + an AI metadata/enhance run.
 
+**Phase 3 — Accent picker hidden (UI v3.30 → v3.31).** Hid the `🎨 Accent color` fast-menu item via
+`.fm-item[data-proxy="accentBtn"]{display:none}`. The accent system is untouched — the saved accent still
+applies on load; only the picker control is gone. (The header `#accentBtn` was already `display:none`.)
+
+**Phase 4 — Upload Options tab: FOUND MIS-WIRED, now fixed (UI v3.31 → v3.32, server v0.40 → v0.41).**
+- **Finding:** The Upload options tab (privacy, category, tags, license, language, *schedule*, *playlist*)
+  was **dead UI**. `initUploadOptions()` saved those values as on-device defaults, but the upload path never
+  sent them: `startTransfer()` POSTed only `{key,title,description}`, `/api/transfer` read only those three,
+  and `transferToYouTube()` **hardcoded** `privacyStatus:"private"` + `categoryId:"1"`. So every upload went
+  out private / Film & Animation regardless of what the user picked. (Title + description, on the Publish tab,
+  *were* correctly wired.)
+- **Fix (wired through, with validation):** `startTransfer()` now sends `privacy, category, tags, license,
+  lang`; `/api/transfer` forwards the body; the worker runs them through a new **`sanitizeUploadOpts()`**
+  allow-list (privacy ∈ public/unlisted/private, license ∈ youtube/creativeCommon, category ∈ the 14 listed
+  IDs, lang matches `[a-zA-Z-]{2,10}`, tags split/clamped to ≤30 items & ≤480 chars). **Every field falls back
+  to the old `private` / category-1 / no-tags behavior when missing or invalid**, so an upload that doesn't
+  change anything behaves EXACTLY as before. Unit-tested the sanitizer (empty→defaults, valid→passthrough,
+  malicious→defaults: all pass). Help text updated to "private draft by default (change visibility… under
+  Upload options)".
+- **⚠️ BEHAVIOR CHANGE for Isaiah to review before push:** privacy is now honored — if a user explicitly
+  selects **Public** or **Unlisted**, the video uploads that way (previously always private). The default is
+  still private, so nothing changes unless the control is deliberately used. Flagging because a public upload
+  is outward-facing / hard to reverse.
+- **🔵 FLAGGED — not yet wired (left as-is, need dedicated work + live testing):** the **Schedule**
+  (`optScheduleAt`) and **Playlist** (`optPlaylist`) controls still have **no effect**. Scheduling needs
+  `status.publishAt` (ISO, privacy forced private until the time) and playlist needs a separate
+  `playlistItems.insert` call after the video is created — both have API nuances I didn't want to ship blind
+  while the live upload is broken by `invalid_grant`. Recommend wiring + testing these once the token is fixed.
+- **invalid_grant (unchanged, as the brief notes):** the live upload's token failure is a **Google Cloud
+  Console** fix (publish the OAuth consent screen to Production, add the `…/oauth2callback` redirect URI,
+  re-authorize, update `YT_REFRESH_TOKEN`), **not code**. The wiring above is verified by inspection + a local
+  boot (the endpoint accepts the new body and guards cleanly); a real end-to-end upload still needs the token.
+
 ## Phase 1 (2026-06-26) — switcher + accent. Review & push when ready.
 
 ### 1A · Two-way switcher
