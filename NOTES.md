@@ -88,6 +88,18 @@ verified the wiring + validation; Isaiah tests after deploy.
   schedule note + `loadPlaylists`/`scheduleError` all serve, footer v3.37. House-rule safe (no `\uXXXX`, no
   regex backslashes — `indexOf`/char-classes/split-join).
 
+**Phase F — owner-only error-log viewer (footer v3.37 → v3.38, APP_VERSION 0.45 → 0.46). 🔴 SENSITIVE.** Ported
+the **reviewed** MSM pattern: capped `RECENT_ERRORS` (200) fed by `logError` + `/api/client-error` via
+`pushError()`; the **hardened `scrubSecrets`** scrubs at write time; all buffer ops `try/catch`-wrapped.
+- **Owner-only, FAIL CLOSED:** `GET /api/logs` returns **403 unless `msmAuthed(req)`** (valid non-guest SSO).
+  No `SESSION_SECRET` → `msmAuthed` false → **denies** (verified 403 locally). The route is not in
+  `isPublicSuitePath`, so the SSO gate guards it too; the in-handler check is the real gate.
+- **UI:** "📋 Error log" `fm-item` in the hamburger opens `#logsPanel`, fetches `/api/logs`, renders via
+  **`textContent`**, newest first, **Copy all** copies the scrubbed text. (The fast-menu's proxy loop ignores
+  the item since it has no `data-proxy`; my own handler opens the panel + closes the menu.)
+- **Verify:** `node --check` ✓; inline scripts parse ✓; booted — `/api/logs` **403 without SSO (fail closed)**,
+  menu item + panel serve, footer v3.38. (Same hardened scrubber as MSM, unit-tested there.)
+
 ## Suite Bulletproofing, Fixes & Improvements (2026-06-30) — server v0.39 → v0.40, UI v3.29 → v3.30
 
 **Repo hygiene first:** Marquee had **no `.gitattributes`** while `core.autocrlf=true` (the regex-backslash
