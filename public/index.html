@@ -451,6 +451,10 @@
         <p class="hint">One-time Google sign-in to grant upload access to your channel.</p>
       </div>
     </div>
+      <div class="card" id="reconnectRow">
+        <a href="/auth" style="display:inline-block;font-size:13px;color:var(--accent);text-decoration:none;border:1px solid var(--border);border-radius:9px;padding:7px 12px" title="Re-link your YouTube channel and save a fresh upload token automatically">&#8635; Reconnect YouTube</a>
+        <p class="hint" style="margin-top:6px">Use this if uploads start failing with a sign-in error &mdash; it re-links your channel and stores a fresh token automatically (no Render edits needed).</p>
+      </div>
       <div class="card">
         <div class="sec" id="secDetails">
         <div class="sechead">Video &amp; details<span class="chev">&#9662;</span></div>
@@ -1064,7 +1068,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.35</span></div>
+    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.36</span></div>
   </div>
 
   <script>
@@ -1655,6 +1659,16 @@
       var g = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
       return { privacy: g('optPrivacy') || 'private', category: g('optCategory') || '1', tags: g('optTags') || '', license: g('optLicense') || 'youtube', lang: g('optLang') || '' };
     }
+    // A YouTube sign-in/token problem (expired refresh token, or no token yet). indexOf — no regex.
+    function isYtAuthError(s) {
+      s = String(s || '').toLowerCase();
+      return s.indexOf('invalid_grant') !== -1 || s.indexOf('not authorized') !== -1 || s.indexOf('unauthorized') !== -1 || s.indexOf('invalid_client') !== -1;
+    }
+    function ytReconnectHtml() {
+      return '<p class="err">YouTube needs to be reconnected &mdash; your channel sign-in has expired.</p>' +
+        '<p style="margin-top:8px"><a class="btn" href="/auth">&#8635; Reconnect YouTube</a></p>' +
+        '<p class="hint" style="margin-top:6px">This re-links your channel and saves a fresh token automatically, then try the upload again.</p>';
+    }
     async function startTransfer(key) {
       prog2.classList.add('show'); p2wrap.classList.add('indet');
       p2bar.style.width = ''; p2pct.textContent = '';
@@ -1663,12 +1677,16 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.assign({ key, title: titleInput.value || '', description: descInput.value || '' }, readUploadOpts()))
       })).json();
-      if (!tr.jobId) throw new Error(tr.error || 'Could not start transfer');
+      if (!tr.jobId) {
+        if (isYtAuthError(tr.error)) { busyDone(); result.classList.add('show'); resultBody.innerHTML = ytReconnectHtml(); return; }
+        throw new Error(tr.error || 'Could not start transfer');
+      }
       const job = await pollTransfer(tr.jobId);
       p2wrap.classList.remove('indet');
       busyDone();
       result.classList.add('show');
       if (job.state === 'error') {
+        if (isYtAuthError(job.error)) { resultBody.innerHTML = ytReconnectHtml(); return; }
         resultBody.innerHTML = '<p class="err">Transfer failed: ' + (job.error || 'unknown') + '</p>';
       } else {
         p2bar.style.width = '100%'; p2pct.textContent = '100%';

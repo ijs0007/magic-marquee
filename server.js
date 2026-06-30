@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.43";
+const APP_VERSION = "0.44";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -439,7 +439,16 @@ async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS yt_oauth (
+      id INTEGER PRIMARY KEY,
+      refresh_token TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT yt_oauth_singleton CHECK (id = 1)
+    )
+  `);
   await refreshTemplateCache();
+  await loadOAuthCreds();
 }
 
 async function refreshTemplateCache() {
@@ -454,6 +463,32 @@ async function refreshTemplateCache() {
       defaults: rows[0].defaults || {},
     };
   }
+}
+
+// --- YouTube OAuth refresh-token persistence (DB-first, env fallback) ---
+// The refresh token grants upload access to the channel; it lives server-side ONLY and is
+// NEVER returned to any client/response. On startup we PREFER the DB copy (written by the
+// in-app "Reconnect YouTube" flow) and fall back to the YT_REFRESH_TOKEN env var, so an
+// existing deployment keeps working until the first in-app reconnect.
+async function loadOAuthCreds() {
+  if (!dbConfigured) return;
+  try {
+    const { rows } = await pool.query(`SELECT refresh_token FROM yt_oauth WHERE id = 1`);
+    if (rows[0] && rows[0].refresh_token) {
+      refreshToken = rows[0].refresh_token;
+      console.log("YouTube refresh token loaded from DB (overriding env).");
+    }
+  } catch (e) { console.warn("loadOAuthCreds failed (using env token if set):", e?.message || e); }
+}
+async function saveOAuthCreds(token) {
+  if (!dbConfigured || !token) return;
+  try {
+    await pool.query(
+      `INSERT INTO yt_oauth (id, refresh_token, updated_at) VALUES (1, $1, now())
+       ON CONFLICT (id) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, updated_at = now()`,
+      [token]
+    );
+  } catch (e) { console.warn("saveOAuthCreds failed (token active in-memory only):", e?.message || e); }
 }
 
 // Background transfer: stream the object from R2 straight into a YouTube
@@ -994,10 +1029,19 @@ app.get("/auth", (req, res) => {
       .status(500)
       .send("Missing CLIENT_ID / CLIENT_SECRET. Set them in Render -> Environment.");
   }
+  // CSRF protection: stash a random state in a short-lived cookie and echo it in the auth URL.
+  // /oauth2callback proceeds only when the returned state matches the cookie — so a stray/forged
+  // callback can never silently re-bind the channel (now that the token auto-persists to the DB).
+  // /auth itself sits behind the SSO gate, so only the owner can start the flow. SameSite=Lax keeps
+  // the cookie on Google's top-level redirect back.
+  const state = crypto.randomBytes(16).toString("hex");
+  const isHttps = req.secure || String(req.headers["x-forwarded-proto"] || "").indexOf("https") !== -1;
+  res.cookie("yt_oauth_state", state, { httpOnly: true, sameSite: "lax", secure: isHttps, maxAge: 10 * 60 * 1000, path: "/" });
   const url = oauthClient().generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
     scope: SCOPES,
+    state,
   });
   res.redirect(url);
 });
@@ -1005,34 +1049,48 @@ app.get("/auth", (req, res) => {
 app.get("/oauth2callback", async (req, res) => {
   const code = req.query.code;
   if (!code) return res.status(400).send("Missing authorization code.");
+  // Verify the CSRF state cookie matches the returned state (timing-safe), then clear it.
+  try {
+    const cookies = parseCookies(req);
+    const expected = String(cookies["yt_oauth_state"] || "");
+    const got = String(req.query.state || "");
+    res.clearCookie("yt_oauth_state", { path: "/" });
+    if (!expected || !got || expected.length !== got.length ||
+        !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(got))) {
+      return res.status(400).send("Sign-in could not be verified (state mismatch). Please start the reconnect again from the app.");
+    }
+  } catch (e) {
+    return res.status(400).send("Sign-in could not be verified. Please start the reconnect again from the app.");
+  }
   try {
     const { tokens } = await oauthClient().getToken(code);
-    if (tokens.refresh_token) refreshToken = tokens.refresh_token;
-    const token = refreshToken
-      ? escapeHtml(refreshToken)
-      : "(no refresh token returned - revoke this app at myaccount.google.com/permissions and re-authorize)";
+    const captured = !!(tokens && tokens.refresh_token);
+    if (captured) {
+      refreshToken = tokens.refresh_token;                 // update the in-memory token now
+      try { await saveOAuthCreds(refreshToken); }          // ...and persist it server-side (no redeploy needed)
+      catch (e) { console.warn("saveOAuthCreds failed (token active in-memory only):", e?.message || e); }
+    }
+    // SECURITY: the refresh token is NEVER rendered or returned. We only confirm success.
     res.send(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Authorized</title>
+<title>YouTube reconnected</title>
 <style>
-  :root { --accent:#7c4dff; color-scheme:dark; }
+  :root { --accent:#2f80ff; color-scheme:dark; }
   body { font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#f0f0f3; background:#0d0d10; margin:0; padding:32px 20px; }
-  .card { max-width:640px; margin:0 auto; background:#16161b; border:1px solid #23232b; border-radius:18px; padding:28px; box-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .card { max-width:560px; margin:0 auto; background:#16161b; border:1px solid #23232b; border-radius:18px; padding:28px; box-shadow:0 1px 3px rgba(0,0,0,.4); }
   h1 { font-size:22px; margin:0 0 6px; }
   p { color:#b6b6bf; }
-  code { display:block; word-break:break-all; background:#101014; border:1px solid #2c2c34; border-radius:10px; padding:14px; margin:14px 0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
-  a.btn { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:11px 18px; border-radius:11px; font-weight:600; }
-  button { font:inherit; border:0; background:#26262e; color:#f0f0f3; border-radius:9px; padding:8px 14px; cursor:pointer; }
+  a.btn { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:11px 18px; border-radius:11px; font-weight:600; margin-top:10px; }
   .muted { font-size:13px; color:#9a9aa4; }
 </style></head>
 <body><div class="card">
-  <h1>✅ Authorized</h1>
-  <p>You can go back and upload now. To make this permanent (so you never click Authorize again):</p>
-  <p class="muted">1. Copy the refresh token below. 2. In Render -> your service -> <b>Environment</b>, add <b>YT_REFRESH_TOKEN</b> with this value. 3. Save (Render redeploys). Keep it secret - it grants upload access to your channel.</p>
-  <code id="tok">${token}</code>
-  <button onclick="navigator.clipboard.writeText(document.getElementById('tok').textContent).then(()=>{this.textContent='Copied'})">Copy token</button>
-  &nbsp;<a class="btn" href="/">Back to uploader</a>
+  <h1>✅ YouTube reconnected</h1>
+  <p>${captured
+      ? "Your channel is reconnected and a fresh upload token was saved securely on the server — no copying anything into Render."
+      : "Your channel is reconnected. Google didn’t return a new refresh token this time; if uploads still fail with a sign-in error, revoke this app at <b>myaccount.google.com/permissions</b> and reconnect again."}
+  You can close this tab and upload.</p>
+  <a class="btn" href="/">Back to uploader</a>
 </div></body></html>`);
   } catch (err) {
     res.status(500).send("OAuth error: " + escapeHtml(err?.message || String(err)));

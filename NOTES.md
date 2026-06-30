@@ -21,6 +21,43 @@ block is kept. The hamburger item was relabeled **"❔ How it works" → "❔ Ho
 header `#helpBtn`). Verified: `node --check` ✓, inline scripts parse ✓; booted and confirmed the heading, close
 button, Magic-Marquee-led first paragraph, hamburger item, Suite block, and footer v3.35 all render.
 
+**Phase C — N/A.** Marquee is the **reference** for the loading bar (top progress bar + button busy-states);
+left untouched per the task. (MSM/Reel/Credits replicated it.)
+
+**Phase D — "Reconnect YouTube" button + DB token persistence (footer v3.35 → v3.36, APP_VERSION 0.43 → 0.44).
+🔴 SENSITIVE — review the OAuth/token diff closely before pushing.**
+- **In-app reconnect:** `/auth` (already had `access_type=offline` + `prompt=consent` — both required for a
+  refresh token on re-auth) now also sets a **CSRF `state`** nonce in a short-lived httpOnly `SameSite=Lax`
+  cookie and echoes it in the auth URL. `/oauth2callback` **verifies the state (timing-safe, length-guarded so
+  it can't throw) BEFORE exchanging the code, and fails closed** (400) on any mismatch.
+- **Token persistence (no more pasting into Render):** `/oauth2callback` now captures the refresh token and
+  **persists it to Postgres** (new `yt_oauth` singleton table) via `saveOAuthCreds()`; on startup
+  `loadOAuthCreds()` reads it **DB-first, falling back to the `YT_REFRESH_TOKEN` env var** (so an existing
+  deployment keeps working until the first in-app reconnect). The in-memory `refreshToken` is updated live.
+  **The refresh token is NEVER returned to any client** — the old success page that *displayed the token for
+  manual copy* was removed; the new page shows only a success boolean. (Verified by an adversarial review: no
+  response/redirect/cookie/log/error path exposes the token.)
+- **redirect_uri NOT hardcoded:** still `REDIRECT_URI = BASE_URL + '/oauth2callback'` from env
+  (`BASE_URL`/`RENDER_EXTERNAL_URL`), so it always matches an authorized entry.
+- **UI:** a standing **"↻ Reconnect YouTube"** card (always visible — moved out of `#statusCard`, which hides
+  when ready, so the owner can re-link proactively before a token expires) + a friendly **`invalid_grant`**
+  message (`isYtAuthError`/`ytReconnectHtml`) that replaces the raw error with a Reconnect prompt (covers both
+  the upload's `job.error` and the no-token 401). House-rule safe (no `\uXXXX`, no regex backslashes — `indexOf`).
+- **🔵 BY-HAND PREREQUISITE (Isaiah's, not code):** the Google **consent screen must be in Production** and the
+  **redirect URI the app sends must be registered** in Google Cloud Console, or any captured token still
+  expires in ~7 days. (Per the task header this is already done — consent in Production, `YT_REFRESH_TOKEN`
+  refreshed — so this builds on a working connection; flagged so reconnect keeps working.) Also ensure
+  `SESSION_SECRET` stays set in prod so `/auth` is never anonymous (it's gated by the SSO when set).
+- **Adversarial security review run (4 lenses + verification): 0 confirmed critical/high/medium issues.**
+  Accepted low-risk notes (no change for this single-user tool): refresh token stored as plaintext in Neon
+  (same trust boundary as the `YT_REFRESH_TOKEN` env var); `loadOAuthCreds` runs only at boot (fine for a
+  single Render instance; re-read per-upload if ever horizontally scaled); `Secure` cookie flag derives from
+  `x-forwarded-proto` (reliable on Render).
+- **Verify:** `node --check` ✓; inline scripts parse ✓; no dup IDs ✓; booted — `/auth` 500s only when
+  `CLIENT_ID` unset, `/oauth2callback` 400s on missing code AND on **state mismatch** (CSRF fail-closed proven),
+  Reconnect card + helpers + footer v3.36 serve. **Live OAuth round-trip not testable in the sandbox** (no
+  Google creds) — Isaiah verifies the end-to-end reconnect after deploy.
+
 ## Suite Bulletproofing, Fixes & Improvements (2026-06-30) — server v0.39 → v0.40, UI v3.29 → v3.30
 
 **Repo hygiene first:** Marquee had **no `.gitattributes`** while `core.autocrlf=true` (the regex-backslash
