@@ -1,5 +1,14 @@
 # Magic Marquee — handoff notes
 
+## Phase F log viewer — close (✕) fix + "Activity log" rename (2026-06-30) — footer v3.38 → v3.39, APP_VERSION 0.46 → 0.47
+
+**Fix (front-end only):** the log panel's `✕` was dead + the panel auto-opened, because `#logsPanel` had both
+`hidden` AND inline `display:flex` (inline `display` overrides the UA `[hidden]{display:none}` rule, so toggling
+`hidden` did nothing). Switched show/hide to `style.display` (markup ships `display:none` = closed by default;
+open → `flex`, ✕/toggle → `none`); the hamburger item is now a real toggle. Renamed **"Error log" → "Activity
+log"** (heading + `fm-item`) and softened the descriptor + empty-state to "recent activity". Copy-all/gate/
+scrubbing/buffer untouched. Verified: `node --check` ✓, no dup IDs, no stray "Error log", served panel ships
+`display:none`, `/api/logs` still 403 (fail-closed). (Same one-line mechanism live-verified in MSM via Preview.)
 ## Polish Round 2 + YouTube Reconnect (2026-06-30)
 
 **Phase A — `uncaughtException` → exit-and-restart (footer v3.33 → v3.34, server APP_VERSION 0.41 → 0.42).**
