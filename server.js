@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.44";
+const APP_VERSION = "0.45";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -145,7 +145,15 @@ const BASE_URL = (
 ).replace(/\/$/, "");
 const REDIRECT_URI = `${BASE_URL}/oauth2callback`;
 
-const SCOPES = ["https://www.googleapis.com/auth/youtube.upload"];
+// youtube.upload = video upload; youtube (full manage) is required for listing the user's
+// playlists (playlists.list mine=true) and adding a video to one (playlistItems.insert).
+// Adding the second scope means the owner must RE-AUTHORIZE (click "Reconnect YouTube") once
+// to grant it — uploads keep working on the existing upload-scope token until then; only the
+// playlist features need the new scope (and they degrade gracefully without it).
+const SCOPES = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  "https://www.googleapis.com/auth/youtube",
+];
 
 // --- R2 (S3-compatible) ---
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -512,7 +520,16 @@ function sanitizeUploadOpts(b) {
     tags = b.tags.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 30)
       .filter((t) => { total += t.length + 1; return total <= 480; }); // YouTube caps total tag length
   }
-  return { privacy, license, category, lang, tags };
+  // Schedule: accept ONLY a valid timestamp strictly in the future (>1 min out); else ignore it
+  // entirely (=> behave exactly as an unscheduled upload). Normalized to a UTC ISO string.
+  let scheduleAt = "";
+  if (typeof b.scheduleAt === "string" && b.scheduleAt) {
+    const t = Date.parse(b.scheduleAt);
+    if (!Number.isNaN(t) && t > Date.now() + 60000) scheduleAt = new Date(t).toISOString();
+  }
+  // Playlist: a YouTube playlist id (PL…/UU…/etc). Empty = don't add to any playlist.
+  const playlist = (typeof b.playlist === "string" && /^[A-Za-z0-9_-]{12,64}$/.test(b.playlist.trim())) ? b.playlist.trim() : "";
+  return { privacy, license, category, lang, tags, scheduleAt, playlist };
 }
 
 async function transferToYouTube(jobId, key, title, description, opts) {
@@ -539,12 +556,14 @@ async function transferToYouTube(jobId, key, title, description, opts) {
     const snippet = { title, description, categoryId: o.category };
     if (o.tags.length) snippet.tags = o.tags;
     if (o.lang) { snippet.defaultLanguage = o.lang; snippet.defaultAudioLanguage = o.lang; }
+    const status = { privacyStatus: o.privacy, license: o.license, selfDeclaredMadeForKids: false };
+    // Scheduled publish: YouTube IGNORES status.publishAt unless privacyStatus is "private", so when a
+    // (validated, future) schedule time is set we FORCE private — the video then auto-goes-public at that
+    // time. No schedule set => privacy follows the dropdown exactly as before.
+    if (o.scheduleAt) { status.publishAt = o.scheduleAt; status.privacyStatus = "private"; }
     const result = await youtube.videos.insert({
       part: ["snippet", "status"],
-      requestBody: {
-        snippet,
-        status: { privacyStatus: o.privacy, license: o.license, selfDeclaredMadeForKids: false },
-      },
+      requestBody: { snippet, status },
       media: { body: counter },
     });
 
@@ -553,8 +572,25 @@ async function transferToYouTube(jobId, key, title, description, opts) {
     job.videoId = v.id;
     job.privacyStatus = v.status?.privacyStatus;
     job.uploadStatus = v.status?.uploadStatus;
+    job.publishAt = v.status?.publishAt || o.scheduleAt || null;
     job.watchUrl = `https://youtu.be/${v.id}`;
     job.studioUrl = `https://studio.youtube.com/video/${v.id}/edit`;
+
+    // Playlist add — best-effort. If the video uploaded but the playlist insert fails (e.g. missing
+    // scope, deleted playlist), the UPLOAD must still count as success; we record the playlist outcome
+    // separately so the client can report it without failing the whole job.
+    if (o.playlist && v.id) {
+      try {
+        await youtube.playlistItems.insert({
+          part: ["snippet"],
+          requestBody: { snippet: { playlistId: o.playlist, resourceId: { kind: "youtube#video", videoId: v.id } } },
+        });
+        job.playlistAdded = true;
+      } catch (pe) {
+        job.playlistAdded = false;
+        job.playlistError = pe?.response?.data?.error?.message || pe?.message || String(pe);
+      }
+    }
   } catch (err) {
     const reason = err?.errors?.[0]?.reason;
     const msg = err?.response?.data?.error?.message || err?.message || String(err);
@@ -1241,6 +1277,29 @@ app.get("/api/transfer/:jobId", (req, res) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Unknown job." });
   res.json(job);
+});
+
+// List the owner's YouTube playlists for the "Add to playlist" dropdown. Owner-gated (behind the SSO
+// gate). Needs the full youtube scope (added to SCOPES) — until the owner re-authorizes, this returns
+// the scope error and the client just leaves the dropdown at "None". Paginated, capped at 200.
+app.get("/api/youtube/playlists", async (req, res) => {
+  if (!refreshToken) return res.status(401).json({ error: "Not authorized yet." });
+  try {
+    const auth = oauthClient();
+    auth.setCredentials({ refresh_token: refreshToken });
+    const youtube = google.youtube({ version: "v3", auth });
+    const out = [];
+    let pageToken;
+    do {
+      const r = await youtube.playlists.list({ part: ["snippet"], mine: true, maxResults: 50, pageToken });
+      (r.data.items || []).forEach((it) => out.push({ id: it.id, title: (it.snippet && it.snippet.title) || "(untitled)" }));
+      pageToken = r.data.nextPageToken || undefined;
+    } while (pageToken && out.length < 200);
+    res.json({ playlists: out });
+  } catch (err) {
+    const msg = err?.response?.data?.error?.message || err?.message || String(err);
+    res.status(502).json({ error: msg });
+  }
 });
 
 // Step T1: kick off background transcription of an already-uploaded R2 object.

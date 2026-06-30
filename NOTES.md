@@ -58,6 +58,36 @@ left untouched per the task. (MSM/Reel/Credits replicated it.)
   Reconnect card + helpers + footer v3.36 serve. **Live OAuth round-trip not testable in the sandbox** (no
   Google creds) — Isaiah verifies the end-to-end reconnect after deploy.
 
+**Phase E — wire Schedule + Playlist into the upload (footer v3.36 → v3.37, APP_VERSION 0.44 → 0.45).** Both
+were dead UI; now fully wired. Both depend on a valid token, so **live upload can't be tested in the sandbox** —
+verified the wiring + validation; Isaiah tests after deploy.
+- **Schedule:** `readUploadOpts()` now sends `scheduleAt` only when the toggle is **On** and a **future** time
+  is picked, converting the local `datetime-local` value to a **UTC ISO string** (`new Date(v).toISOString()`).
+  `sanitizeUploadOpts()` re-validates server-side (must parse and be >1 min in the future, else ignored).
+  `transferToYouTube()` sets `status.publishAt` AND **forces `status.privacyStatus = "private"`** (YouTube
+  ignores `publishAt` unless private — the video auto-goes-public at the set time). A UI note
+  (`#optScheduleNote`, shown when Schedule is On) says exactly that. A friendly **`scheduleError()`** blocks the
+  upload with a message if Schedule is On but the time is missing/invalid/past. **No schedule set ⇒ identical
+  to before** (privacy follows the dropdown, no `publishAt`). Sanitizer unit-tested (future kept, past/garbage
+  dropped).
+- **Playlist:** the **text input is now a `<select>`** populated from a new owner-gated endpoint
+  **`GET /api/youtube/playlists`** (`playlists.list`, `mine=true`, paginated, capped at 200) + a ↻ refresh
+  button; `loadPlaylists()` fills it best-effort on load. After a **successful** upload, if a playlist is
+  chosen, `playlistItems.insert` adds the video — **inside its own try/catch so a playlist failure NEVER fails
+  the upload** (recorded as `job.playlistAdded`/`job.playlistError` and surfaced separately in the result).
+  **Unset = no playlist add** (current behavior). The playlist id is allow-listed (`[A-Za-z0-9_-]{12,64}`) +
+  HTML-escaped in the option text (split/join, no regex). Sanitizer unit-tested (valid kept, evil/short
+  dropped).
+- **🔴 SCOPE CHANGE — requires RE-AUTH:** `playlists.list` + `playlistItems.insert` need more than the
+  upload-only scope, so I added **`https://www.googleapis.com/auth/youtube`** to `SCOPES`. **Uploads keep
+  working on the existing token**, but the **playlist dropdown stays at "None" and playlist-add fails until
+  Isaiah clicks "Reconnect YouTube" once** to grant the new scope (`prompt=consent` re-prompts). The dropdown
+  and the post-upload add both **degrade gracefully** without it. Flag this for Isaiah.
+- **Verify:** `node --check` ✓; inline scripts parse ✓; sanitizer unit tests pass; booted —
+  `/api/youtube/playlists` 401s without a token (token-guarded), the playlist `<select>` + refresh button +
+  schedule note + `loadPlaylists`/`scheduleError` all serve, footer v3.37. House-rule safe (no `\uXXXX`, no
+  regex backslashes — `indexOf`/char-classes/split-join).
+
 ## Suite Bulletproofing, Fixes & Improvements (2026-06-30) — server v0.39 → v0.40, UI v3.29 → v3.30
 
 **Repo hygiene first:** Marquee had **no `.gitattributes`** while `core.autocrlf=true` (the regex-backslash

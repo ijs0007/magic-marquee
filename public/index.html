@@ -1009,6 +1009,7 @@
           <span class="optval" id="optScheduleVal">Off</span>
         </div>
         <input type="datetime-local" id="optScheduleAt" class="optsub">
+        <p class="hint" id="optScheduleNote" style="display:none;font-size:11.5px;margin:3px 2px 0">Scheduled videos upload as <b>Private</b> and go Public automatically at the time you set.</p>
 
         <div class="optrow">
           <span class="optlabel">Category</span>
@@ -1047,7 +1048,10 @@
 
         <div class="optrow">
           <span class="optlabel">Add to playlist</span>
-          <input type="text" id="optPlaylist" class="optinput" placeholder="None">
+          <span style="display:flex;align-items:center;gap:6px">
+            <select id="optPlaylist" class="optsel"><option value="">None</option></select>
+            <button type="button" id="optPlaylistRefresh" title="Refresh playlists from YouTube" style="flex:0 0 auto;font:inherit;border:1px solid var(--border);background:transparent;color:var(--text-soft);border-radius:8px;padding:4px 9px;cursor:pointer;line-height:1">&#8635;</button>
+          </span>
         </div>
 
         <div class="optrow optrow-tap" id="optEmbedRow" role="button" tabindex="0">
@@ -1068,7 +1072,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.36</span></div>
+    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.37</span></div>
   </div>
 
   <script>
@@ -1657,7 +1661,36 @@
     // and the server falls back to the safe private/category-1 behavior.
     function readUploadOpts() {
       var g = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
-      return { privacy: g('optPrivacy') || 'private', category: g('optCategory') || '1', tags: g('optTags') || '', license: g('optLicense') || 'youtube', lang: g('optLang') || '' };
+      var opts = { privacy: g('optPrivacy') || 'private', category: g('optCategory') || '1', tags: g('optTags') || '', license: g('optLicense') || 'youtube', lang: g('optLang') || '', playlist: g('optPlaylist') || '' };
+      // Schedule: only when the toggle is On AND a valid future time is picked. Convert the local
+      // datetime-local value to a UTC ISO string (new Date(localValue).toISOString()). The server
+      // re-validates (future-only) and ignores anything stale.
+      try {
+        var on = (typeof getSchedule === 'function') ? getSchedule() : false;
+        var raw = g('optScheduleAt');
+        if (on && raw) {
+          var d = new Date(raw);
+          if (!isNaN(d.getTime()) && d.getTime() > Date.now() + 60000) opts.scheduleAt = d.toISOString();
+        }
+      } catch (e) {}
+      return opts;
+    }
+    // HTML-escape for option text (split/join — no regex, per house rules).
+    function escHtmlOpt(s) { return String(s == null ? '' : s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;'); }
+    // Populate the "Add to playlist" dropdown from the owner's YouTube playlists. Best-effort: needs
+    // the full youtube scope, so until the owner reconnects this leaves the list at "None". `keep` is the
+    // id to re-select after refresh (so the user's choice survives a reload).
+    function loadPlaylists(keep) {
+      var sel = document.getElementById('optPlaylist');
+      if (!sel) return;
+      fetch('/api/youtube/playlists').then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (res) {
+        if (!res.ok || !res.j || !res.j.playlists) return;
+        var want = (keep != null && keep !== '') ? keep : sel.value;
+        var html = '<option value="">None</option>';
+        res.j.playlists.forEach(function (p) { html += '<option value="' + escHtmlOpt(p.id) + '">' + escHtmlOpt(p.title || p.id) + '</option>'; });
+        sel.innerHTML = html;
+        if (want) sel.value = want;
+      }).catch(function () {});
     }
     // A YouTube sign-in/token problem (expired refresh token, or no token yet). indexOf — no regex.
     function isYtAuthError(s) {
@@ -1669,7 +1702,24 @@
         '<p style="margin-top:8px"><a class="btn" href="/auth">&#8635; Reconnect YouTube</a></p>' +
         '<p class="hint" style="margin-top:6px">This re-links your channel and saves a fresh token automatically, then try the upload again.</p>';
     }
+    // Friendly schedule validation: returns an error message if Schedule is On but the time is
+    // missing / invalid / not in the future; otherwise null (proceed normally).
+    function scheduleError() {
+      try {
+        var on = (typeof getSchedule === 'function') ? getSchedule() : false;
+        if (!on) return null;
+        var el = document.getElementById('optScheduleAt');
+        var raw = el ? el.value : '';
+        if (!raw) return 'Pick a publish date and time, or turn Schedule off.';
+        var d = new Date(raw);
+        if (isNaN(d.getTime())) return 'That publish time isn’t valid — pick a date and time.';
+        if (d.getTime() <= Date.now() + 60000) return 'The scheduled time must be in the future — pick a later date and time.';
+        return null;
+      } catch (e) { return null; }
+    }
     async function startTransfer(key) {
+      var schedErr = scheduleError();
+      if (schedErr) { try { busyDone(); } catch(e){} result.classList.add('show'); resultBody.innerHTML = '<p class="err">' + schedErr + '</p>'; return; }
       prog2.classList.add('show'); p2wrap.classList.add('indet');
       p2bar.style.width = ''; p2pct.textContent = '';
       busy('Preparing transfer', null);
@@ -1691,10 +1741,20 @@
       } else {
         p2bar.style.width = '100%'; p2pct.textContent = '100%';
         const priv = job.privacyStatus || 'unknown';
+        var schedHtml = '';
+        if (job.publishAt) {
+          var when = job.publishAt; try { var pd = new Date(job.publishAt); if (!isNaN(pd.getTime())) when = pd.toLocaleString(); } catch (e) {}
+          schedHtml = '<div class="row"><span>Scheduled</span><b>' + when + '</b></div>';
+        }
+        var plHtml = '';
+        if (job.playlistAdded === true) plHtml = '<div class="row"><span>Playlist</span><b>Added ✓</b></div>';
+        else if (job.playlistAdded === false) plHtml = '<div class="row"><span>Playlist</span><span style="color:#ff9f0a">Upload OK, but couldn’t add to the playlist' + (job.playlistError ? ' (' + job.playlistError + ')' : '') + '</span></div>';
         resultBody.innerHTML =
           '<div class="row"><span>Video ID</span><b>' + job.videoId + '</b></div>' +
           '<div class="row"><span>Privacy</span><span class="badge ' + (priv === 'private' ? 'private' : '') + '">' + priv + '</span></div>' +
+          schedHtml +
           '<div class="row"><span>Processing</span><b>' + (job.uploadStatus || '—') + '</b></div>' +
+          plHtml +
           '<div class="row links"><span>Open in</span><span><a href="' + job.studioUrl + '" target="_blank">Studio</a> · <a href="' + job.watchUrl + '" target="_blank">Watch</a></span></div>';
         // Thumbnail step becomes available now that the video exists on YouTube.
         thumbVideoId = job.videoId;
@@ -4928,10 +4988,13 @@
       setSel('optScheduleAt', d.scheduleAt || '');
 
       var schedAt = $id('optScheduleAt');
+      var schedNote = $id('optScheduleNote');
       getSchedule = bindToggle('optScheduleRow', 'optScheduleVal', !!d.scheduleOn, 'On', 'Off', function (on) {
         if (schedAt) schedAt.style.display = on ? 'block' : 'none';
+        if (schedNote) schedNote.style.display = on ? 'block' : 'none';
       });
       if (schedAt) schedAt.style.display = d.scheduleOn ? 'block' : 'none';
+      if (schedNote) schedNote.style.display = d.scheduleOn ? 'block' : 'none';
 
       getKids = bindToggle('optKidsRow', 'optKidsVal', (d.kids === true || d.kids === 'yes'), 'Yes', 'No');
       getComments = bindToggle('optCommentsRow', 'optCommentsVal', d.comments !== false, 'On', 'Off');
@@ -4941,6 +5004,11 @@
       ['optPrivacy', 'optCategory', 'optLicense', 'optLang', 'optScheduleAt', 'optTags', 'optPlaylist'].forEach(function (id) {
         var el = $id(id); if (el) el.addEventListener('change', save);
       });
+
+      // Playlist dropdown: load the owner's YouTube playlists (best-effort) + a refresh button.
+      var plRefresh = $id('optPlaylistRefresh');
+      if (plRefresh) plRefresh.addEventListener('click', function () { loadPlaylists(d.playlist || ''); });
+      loadPlaylists(d.playlist || '');
 
       var capBtn = $id('optCaptionBtn'), cap = $id('optCaption');
       if (capBtn && cap) {
