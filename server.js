@@ -42,7 +42,7 @@ import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_VERSION = "0.50";
+const APP_VERSION = "0.51";
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -975,6 +975,23 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 120000, retryIdempot
   try { return await once(); }
   catch (e) { if (retryIdempotent) return await once(); throw e; }
 }
+
+// PWA scope_extensions (Round 4): authorize MSM (app.isaiahsmithfilms.com) to extend its installed-app scope over
+// THIS origin, so switching between the suite's apps inside the installed PWA doesn't show the cross-origin
+// "out of scope" URL bar. Chrome/Edge fetch this file UNAUTHENTICATED, so it is served publicly and registered
+// BEFORE the Suite Pass gate. The body is a hedged superset of the two shapes current Chromium accepts — the
+// shipped `web_apps`/`web_app_identity` array AND the MDN/WICG id-keyed object — since a wrong format fails
+// silently. See NOTES.md for the format rationale + Isaiah's by-hand install/verify steps.
+const WEB_APP_ORIGIN_ASSOCIATION = {
+  web_apps: [
+    { web_app_identity: "https://app.isaiahsmithfilms.com/" },
+    { web_app_identity: "https://app.isaiahsmithfilms.com" }
+  ],
+  "https://app.isaiahsmithfilms.com/": { scope: "/" }
+};
+app.get("/.well-known/web-app-origin-association", (req, res) => {
+  res.set("Content-Type", "application/json").send(JSON.stringify(WEB_APP_ORIGIN_ASSOCIATION));
+});
 
 app.use(suiteAuthGate); // Magic Suite SSO — verify MSM's shared login before any route or body parsing
 app.use(express.json({ limit: "12mb" })); // base64 thumbnail images can be a few MB

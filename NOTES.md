@@ -31,6 +31,15 @@ front-end only).** Two changes to the Round-3 glass panel, committed together:
 Verified in a Preview harness (drag/clamp/resize + message-color === title-color); `node --check` extracted
 `<script>` ✓; box-cookie round-trip 4/4; div-balanced; no dup IDs.
 
+**Phase 4 — serve `/.well-known/web-app-origin-association` for PWA scope_extensions (footer v3.48 → v3.49, server
+APP_VERSION 0.50 → 0.51).** Added a public Express route — registered **BEFORE** `app.use(suiteAuthGate)` so
+Chrome/Edge fetch it unauthenticated — returning the hedged `web-app-origin-association` JSON that authorizes MSM
+(`app.isaiahsmithfilms.com`) to extend its installed-PWA scope over this origin, removing the cross-subdomain
+"out of scope" bar in the installed suite app. See **MSM NOTES** for the full format rationale (the format changed
+across Chrome versions + fails silently, hence the hedged both-shapes body) and Isaiah's by-hand install/verify
+steps. Verified by booting the server: `GET /.well-known/web-app-origin-association` → **200 `application/json`**
+(valid JSON, both shapes), not gated/redirected; `node --check` server.js ✓.
+
 ## Polish Round 3 (2026-07-01)
 
 **Phase 2 — How It Works "?" hamburger icon → accent color (footer v3.40 → v3.41).** The hamburger "How It
