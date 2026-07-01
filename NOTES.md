@@ -52,6 +52,32 @@ log `<script>` `node --check` ✓; 12/12 logic tests pass (incl. fresh→closed,
 benign "ResizeObserver loop completed…/limit exceeded" browser quirk never reaches the Activity log. `indexOf`, no
 regex (house rule). (6a's `querySelectorAll`-on-null bug is MSM-only — confirmed the pattern isn't present here.)
 Verified: extracted net `node --check` ✓; filter present ×1; 6/6 filter logic tests pass.
+
+**Phase 8 — Made-for-Kids / comments / notify / embeddable wiring (footer v3.45 → v3.46, server APP_VERSION 0.48 →
+0.49).** Traced all three layers; the four toggles were **dropped at every one** (same shape as the scheduling bug):
+- **Client:** `getKids/getComments/getNotify/getEmbed` were declared **local** to `initUploadOptions()`, so `save()`
+  persisted them to localStorage but the actually-sent `readUploadOpts()` (a sibling top-level fn) never saw them
+  and omitted them — "saved locally but never sent." *Fix:* hoisted `var getKids, getComments, getNotify, getEmbed;`
+  to the shared top-level scope (next to `getSchedule`); init now only **assigns** them; `readUploadOpts()` now
+  sends `opts.kids/comments/notify/embeddable` (defensive `typeof …==='function'` guards; safe defaults kids=false,
+  others=true).
+- **Server sanitizer:** `sanitizeUploadOpts()` returned only 7 fields — **stripped** all four. *Fix:* it now
+  validates + returns `kids/comments/notify/embeddable` with the same safe defaults (unset ⇒ today's behavior
+  exactly).
+- **Server `videos.insert`:** `status.selfDeclaredMadeForKids` was **hardcoded `false`** (ignored the user),
+  `embeddable` was never set, `notifySubscribers` was never passed. *Fix:* `selfDeclaredMadeForKids: o.kids`,
+  `status.embeddable: o.embeddable`, and `notifySubscribers: o.notify` as a **top-level insert param** (not inside
+  `status`). Diagnostic log extended to print madeForKids/embeddable/notifySubscribers.
+- **Comments — flagged, NOT wired (API limitation):** per-video comment enable/disable is **not settable via Data
+  API v3 `videos.insert`** (it's a channel default / Studio setting). The value is still saved/sent, but the server
+  intentionally does **not** apply it and says so in a code comment. Comment policy is set in YouTube Studio.
+- **Made-for-Kids (COPPA) — deliberate-choice guarantee:** it now reflects the user's explicit toggle, defaulting to
+  **No (not for kids)** only when truly unset (matching prior behavior + the UI default); it is **never** silently
+  set to Yes. Live YouTube confirmation is Isaiah's post-deploy.
+
+Verified: end-to-end path (client toggle → `readUploadOpts` → POST `/api/transfer` body → route passes `req.body` →
+`sanitizeUploadOpts` → `videos.insert`) traced in code; `node --check` server.js ✓ + main inline `<script>` ✓;
+single `var getKids` decl; div-balanced (323/323); no dup IDs.
 ## Scheduled-upload fix — publishAt was never sent (2026-07-01) — footer v3.39 → v3.40, APP_VERSION 0.47 → 0.48
 
 **Root cause (confirmed, not guessed):** a JS scoping bug, not the sanitizer and not the force-private override —
