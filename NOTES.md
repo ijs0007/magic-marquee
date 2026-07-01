@@ -1,5 +1,11 @@
 # Magic Marquee — handoff notes
 
+## Polish Round 3 (2026-07-01)
+
+**Phase 2 — How It Works "?" hamburger icon → accent color (footer v3.40 → v3.41).** The hamburger "How It
+Works" item led with a `❔` emoji (U+2754) that renders red/pink. Replaced it with a styled
+`<span style="color:var(--accent);font-weight:700">?</span>` so the "?" uses Marquee's blue accent `#2f80ff`
+(via `var(--accent)`). Icon only; still proxies to `#helpBtn`. Verified: inline scripts parse ✓; no leftover emoji.
 ## Scheduled-upload fix — publishAt was never sent (2026-07-01) — footer v3.39 → v3.40, APP_VERSION 0.47 → 0.48
 
 **Root cause (confirmed, not guessed):** a JS scoping bug, not the sanitizer and not the force-private override —
