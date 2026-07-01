@@ -20,6 +20,20 @@ modal has its own dismiss affordances — standard modal behavior. Title span ca
 right. Verified: `node --check` on the rewritten inline script ✓; div-balanced (323/323); no dup IDs; single
 `.prof-overlay` definition; live Preview harness (exact ported CSS/markup/JS) confirmed centered glass modal +
 dimmed/blurred backdrop + backdrop-click close.
+
+**Phase 4 — Activity log restyled to Credits' floating "Controls" glass panel + header wrap fix (footer v3.42 →
+v3.43; front-end only).** The owner-only Activity log `#logsPanel` keeps its centered floating position but swaps
+its opaque `var(--surface)` fill for the **glass treatment** Credits uses on its pop-out **Controls** panel:
+`background: color-mix(in srgb, var(--surface) 52%, transparent)` + `backdrop-filter: blur(16px)`, `border: 1px
+solid color-mix(in srgb, var(--border) 70%, transparent)`, `border-radius: 12px`, softer `box-shadow: 0 14px 38px
+rgba(0,0,0,.4)`, plus `overflow:hidden`. **Untouched:** owner-gate, secret-scrubbing, ring buffer, Copy-all,
+✕/toggle wiring, closed-by-default. **Marquee header wrap bug — root cause found & fixed:** Marquee alone carries a
+**global `button { width:100% }`** rule (line ~94). In the log header's flex row that gave Copy-all and ✕ a
+full-container flex-basis, squeezing the `flex:1` title to ~0 width so its text wrapped one word per line. Setting
+`flex:0 0 auto;width:auto` on those two buttons (now applied to all four apps for parity) restores content-width
+buttons, so the title takes the remaining space and renders on one line; title `<b>` also got `min-width:0` for
+narrow screens. **Decision (noted):** mirrored Controls' 52% surface opacity exactly; 16px blur keeps the log
+legible. Verified: no leftover old panel style; div-balanced (323/323); glass `#logsPanel` ×1.
 ## Scheduled-upload fix — publishAt was never sent (2026-07-01) — footer v3.39 → v3.40, APP_VERSION 0.47 → 0.48
 
 **Root cause (confirmed, not guessed):** a JS scoping bug, not the sanitizer and not the force-private override —
