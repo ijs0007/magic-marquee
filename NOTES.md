@@ -1,5 +1,18 @@
 # Magic Marquee — handoff notes
 
+## How It Works modal heading wrap fix (footer v3.49 → v3.50) (2026-07-01)
+
+The "How It Works" modal heading stacked one word per line (How / It / Works) — the **same `button { width:100% }`
+global-rule bug already fixed on the Activity-log header.** Marquee's bare `button {…width:100%}` (index.html ~line
+97) stretched the modal's `.prof-overlay-close` ✕ to fill the flex row, squeezing the `flex:1` heading span to ~0
+width. **Fix (front-end only, CSS/HTML):** pinned `.prof-overlay-close` with `flex: 0 0 auto; width: auto;` (mirrors
+the Activity-log fix) and added `white-space:nowrap` to the `<span style="flex:1">How It Works</span>` heading as a
+belt-and-suspenders guard. Header now lays out as a normal row — heading left on one line, ✕ right.
+**Checked all four apps:** only Marquee has a bare global `button {…}` rule (grep-confirmed); **MSM, Reel, and
+Credits scope their button CSS to classes, so their How It Works ✕ stays content-width and the heading doesn't wrap
+— no change needed there.** Verified: reproduced the stack + confirmed the one-line fix in a live Preview harness
+(before/after); `node --check` main inline `<script>` ✓; div 322/322 balanced; no dup IDs.
+
 ## Polish Round 4 (2026-07-01)
 
 **Phase 1 — removed the Comments toggle from Upload Options (footer v3.46 → v3.47, server APP_VERSION 0.49 → 0.50).**
