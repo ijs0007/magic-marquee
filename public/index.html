@@ -50,8 +50,17 @@
     header h1 { margin:0; }
     .help { width:26px; height:26px; flex:none; padding:0; border-radius:50%; background:var(--border); color:var(--text-soft); font-weight:700; font-size:14px; line-height:1; }
     .help:hover { background:var(--chip); color:var(--text); }
-    .helppanel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:16px; font-size:13px; line-height:1.55; color:var(--text-soft); }
-    .helppanel b { color:var(--text); font-weight:600; }
+    /* How It Works modal — ported from MSM (.prof-overlay): centered, dimmed+blurred backdrop, glass panel, scrollable body. */
+    .prof-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; justify-content: center; align-items: flex-start; padding: 6vh 16px 16px; }
+    .prof-overlay.hidden { display: none; }
+    .prof-overlay-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+    .prof-overlay-panel { position: relative; width: min(640px, 100%); max-height: 88vh; background: color-mix(in srgb, var(--surface) 52%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 11px; box-shadow: 0 14px 38px rgba(0,0,0,0.4); display: flex; flex-direction: column; animation: profPopIn 0.16s ease-out; overflow: hidden; }
+    @keyframes profPopIn { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: none; } }
+    .prof-overlay-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 15px; flex: 0 0 auto; }
+    .prof-overlay-close { font-size: 18px; background: none; border: none; color: var(--text-soft); cursor: pointer; padding: 4px 10px; border-radius: 8px; }
+    .prof-overlay-close:hover { background: rgba(127,127,127,0.15); color: var(--text); }
+    .prof-overlay-mount { padding: 14px 16px 20px; overflow-y: auto; flex: 1 1 auto; font-size: 13px; line-height: 1.55; color: var(--text-soft); }
+    .prof-overlay-mount b { color: var(--text); font-weight: 600; }
     .card {
       background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:14px;
     }
@@ -458,15 +467,22 @@
     })();
     </script>
     <div id="accentPop" class="accent-pop" hidden></div>
-    <div id="helpPanel" class="helppanel" style="display:none;position:relative">
-      <button type="button" id="helpPanelClose" aria-label="Close help" style="position:absolute;top:6px;right:10px;background:none;border:none;color:var(--text-soft);font-size:16px;cursor:pointer;line-height:1">&#10005;</button>
-      <h3 style="margin:0 0 8px;color:var(--text);font-size:16px">How It Works</h3>
-      <p style="margin:0 0 12px">Magic Marquee uploads a finished film straight to cloud storage, then transfers it to YouTube as a <b>private</b> draft by default (change the visibility, category, tags &amp; more under <b>Upload options</b>). If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.</p>
-      <div style="margin-top:13px;padding-top:12px;border-top:1px solid var(--border)">
-        <b>Part of the Magic Suite.</b> Marquee is one of four connected apps that share your login and project data:
-        <b>Story Maker</b> (write the script, build cast &amp; crew) · <b>Reel</b> (share footage for selects) ·
-        <b>Marquee</b> (this app — thumbnails &amp; YouTube upload) · <b>Credits</b> (end-credit roll). Switch between
-        them from the links up top — sign in once and your projects follow you across all four.
+    <div id="helpPanel" class="prof-overlay hidden">
+      <div class="prof-overlay-backdrop" id="helpPanelBackdrop"></div>
+      <div class="prof-overlay-panel">
+        <div class="prof-overlay-head">
+          <span style="flex:1">How It Works</span>
+          <button type="button" class="prof-overlay-close" id="helpPanelClose" aria-label="Close help" title="Close">&#10005;</button>
+        </div>
+        <div class="prof-overlay-mount">
+          <p style="margin:0 0 12px">Magic Marquee uploads a finished film straight to cloud storage, then transfers it to YouTube as a <b>private</b> draft by default (change the visibility, category, tags &amp; more under <b>Upload options</b>). If the film has dialogue, it auto-transcribes and writes the title, description &amp; chapters for you to review (or add your own transcript to skip that). Large files upload in chunks automatically. Last step: make a thumbnail.</p>
+          <div style="margin-top:13px;padding-top:12px;border-top:1px solid var(--border)">
+            <b>Part of the Magic Suite.</b> Marquee is one of four connected apps that share your login and project data:
+            <b>Story Maker</b> (write the script, build cast &amp; crew) · <b>Reel</b> (share footage for selects) ·
+            <b>Marquee</b> (this app — thumbnails &amp; YouTube upload) · <b>Credits</b> (end-credit roll). Switch between
+            them from the links up top — sign in once and your projects follow you across all four.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1118,7 +1134,7 @@
 
     <div id="popoutPanel"><div id="popoutBar"><span>PREVIEW</span><div class="poBtns"><button type="button" class="poMode" id="poDockL" title="Dock left">Left</button><button type="button" class="poMode on" id="poFloat" title="Float">Float</button><button type="button" class="poMode" id="poDockR" title="Dock right">Right</button><button type="button" id="popoutClose" aria-label="Put preview back" title="Put back">×</button></div></div><div id="popoutGrip"></div><div id="popoutBody"></div></div>
     <div id="thumbLightbox" class="lightbox"><img id="lightboxImg" alt="Thumbnail preview"><span class="lightbox-x">×</span></div>
-    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.41</span></div>
+    <div class="foot"><span class="foot-brand">Isaiah Smith Films</span> · Magic Marquee <span class="foot-ver">v3.42</span></div>
   </div>
 
   <script>
@@ -1833,11 +1849,19 @@
       for (var i = 0; i < links.length; i++) { links[i].classList.add("msuite-on"); links[i].removeAttribute("href"); }
     })();
 
-    document.getElementById('helpBtn').addEventListener('click', function () {
-      var p = document.getElementById('helpPanel');
-      p.style.display = (p.style.display === 'none') ? 'block' : 'none';
-    });
-    (function(){ var c = document.getElementById('helpPanelClose'); if (c) c.addEventListener('click', function(){ var p = document.getElementById('helpPanel'); if (p) p.style.display = 'none'; }); })();
+    (function(){
+      // "How It Works" opens as a centered modal (MSM style) from the header "?" / hamburger item.
+      var panel = document.getElementById('helpPanel');
+      var btn = document.getElementById('helpBtn');
+      var x = document.getElementById('helpPanelClose');
+      var backdrop = document.getElementById('helpPanelBackdrop');
+      function openHelp(){ if (panel) panel.classList.remove('hidden'); }
+      function closeHelp(){ if (panel) panel.classList.add('hidden'); }
+      if (btn) btn.addEventListener('click', openHelp);
+      if (x) x.addEventListener('click', closeHelp);
+      if (backdrop) backdrop.addEventListener('click', closeHelp);
+      document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && panel && !panel.classList.contains('hidden')) closeHelp(); });
+    })();
 
     /* ---------- Fast menu (header hamburger) ---------- */
     (function(){

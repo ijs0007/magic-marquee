@@ -6,6 +6,20 @@
 Works" item led with a `❔` emoji (U+2754) that renders red/pink. Replaced it with a styled
 `<span style="color:var(--accent);font-weight:700">?</span>` so the "?" uses Marquee's blue accent `#2f80ff`
 (via `var(--accent)`). Icon only; still proxies to `#helpBtn`. Verified: inline scripts parse ✓; no leftover emoji.
+
+**Phase 3 — How It Works panel → MSM centered modal (footer v3.41 → v3.42; front-end only, server APP_VERSION
+unchanged).** The old `#helpPanel` was an in-flow `.helppanel` card toggled by `style.display` block/none.
+Restructured it into MSM's modal shape: `.prof-overlay > .prof-overlay-backdrop + .prof-overlay-panel(
+.prof-overlay-head[title + ✕] + .prof-overlay-mount[content])`. Ported the `.prof-overlay` CSS family + `@keyframes
+profPopIn` from MSM (Marquee had no prior copy — verified single definition), replacing the two `.helppanel` rules;
+folded the old `.helppanel b` bold color into `.prof-overlay-mount b`. Kept the "How It Works" heading (now in the
+modal head) and the Magic-Marquee-led first paragraph. Open still comes from `#helpBtn` (which the hamburger item
+proxies) via `classList.remove('hidden')`; close = ✕ **and** backdrop-click **and** Escape via
+`classList.add('hidden')`. **Decision (noted):** the header `#helpBtn` is now open-only (was a toggle) since the
+modal has its own dismiss affordances — standard modal behavior. Title span carries inline `flex:1` so the ✕ sits
+right. Verified: `node --check` on the rewritten inline script ✓; div-balanced (323/323); no dup IDs; single
+`.prof-overlay` definition; live Preview harness (exact ported CSS/markup/JS) confirmed centered glass modal +
+dimmed/blurred backdrop + backdrop-click close.
 ## Scheduled-upload fix — publishAt was never sent (2026-07-01) — footer v3.39 → v3.40, APP_VERSION 0.47 → 0.48
 
 **Root cause (confirmed, not guessed):** a JS scoping bug, not the sanitizer and not the force-private override —
